@@ -101,9 +101,4 @@ serverless de Vercel y usar una base de datos Postgres con pooler para serverles
 Para la base de datos en la nube, cualquiera de estas opciones funciona bien con este
 esquema: **Neon**, **Supabase**, **Render Postgres** o **Railway Postgres**.
 
-## 6. Qué falta antes de producción
 
-- Reemplazar los datos de ejemplo de `Welcome.jsx` (nombre, horario, dirección) por los reales.
-- Subir los íconos `icon-192.png` / `icon-512.png` a `client/public/` para el manifest de la PWA.
-- Revisar copys y textos de confirmación con el dueño del negocio.
-- Pruebas de carga del endpoint de agendamiento si esperas mucho tráfico simultáneo.
