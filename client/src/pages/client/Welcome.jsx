@@ -2,14 +2,13 @@ import { Link } from 'react-router-dom';
 
 // Contenido del negocio — edítalo con los datos reales del emprendimiento.
 const BUSINESS = {
-  name: 'Peluquería de Mascotas',
-  tagline: 'Baño y peluquería para perros y gatos, con fichas de cuidado a la medida de cada mascota.',
+  name: 'Mascota Rey',
+  tagline: 'La perruquería canina y felina.',
   hours: [
-    ['Lunes a viernes', '9:00 am – 6:00 pm'],
-    ['Sábado', '9:00 am – 3:00 pm'],
+    ['Lunes a sábado', '7:00 am – 6:00 pm'],
     ['Domingo', 'Cerrado'],
   ],
-  address: 'Dirección del local, ciudad',
+  coverage: 'Bogotá y zonas aledañas: Cajicá, Soacha, Zipaquirá, Sopó, Briceño, Chía, Suesca, La Calera, Guatavita, Choachi, Cota, Funza, Mosquera, Madrid, Facatativa, Tenjo.',
 };
 
 export default function Welcome() {
@@ -43,8 +42,8 @@ export default function Welcome() {
           </div>
 
           <div className="mt-8">
-            <h2 className="font-display text-xl text-ink">Ubicación</h2>
-            <p className="mt-2 text-sm text-ink/70">{BUSINESS.address}</p>
+            <h2 className="font-display text-xl text-ink">Zona de cobertura</h2>
+            <p className="mt-2 text-sm text-ink/70">{BUSINESS.coverage}</p>
           </div>
         </div>
       </section>
