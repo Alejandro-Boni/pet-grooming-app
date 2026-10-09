@@ -1,6 +1,6 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { geocodeAddress } = require('../utils/tomtom');
+const { geocodeAddress } = require('../utils/locationiq');
 
 const router = express.Router();
 

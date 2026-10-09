@@ -4,8 +4,6 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Sistema de color propio: boutique de spa para mascotas — cálido y natural,
-        // sin la paleta pastel genérica ni el clásico crema+terracota.
         pine: { DEFAULT: '#2C3B31', dark: '#1E291F' },
         linen: '#EDE7DA',
         cream: '#F7F4EC',

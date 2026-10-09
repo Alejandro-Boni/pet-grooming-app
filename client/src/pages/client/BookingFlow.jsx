@@ -58,7 +58,15 @@ export default function BookingFlow() {
           <p className="text-ink">{location.address}</p>
           <p className="mt-3 text-sm text-ink/60">Fecha y hora</p>
           <p className="text-ink">
-            {confirmedAppointment.appointment_date} a las {confirmedAppointment.start_time}
+            <p className="text-ink">
+  {new Date(confirmedAppointment.appointment_date).toLocaleDateString('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  })} a las {confirmedAppointment.start_time}
+</p>
           </p>
         </div>
         <div className="mt-5 rounded-xl bg-ochre/10 p-4 text-sm text-ink/80">

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-// Contenido del negocio — edítalo con los datos reales del emprendimiento.
+
 const BUSINESS = {
   name: 'Mascota Rey',
   tagline: 'La perruquería canina y felina.',

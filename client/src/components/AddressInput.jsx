@@ -37,6 +37,18 @@ export default function AddressInput({ onConfirm }) {
         <button onClick={editAgain} className="mt-2 text-xs text-pine underline underline-offset-2">
           Cambiar dirección
         </button>
+        {/* Crédito requerido por la licencia de los datos de ubicación (ODbL / LocationIQ). */}
+        <p className="mt-3 text-[11px] text-ink/40">
+          Ubicación por{' '}
+          <a href="https://locationiq.com/attribution" target="_blank" rel="noreferrer" className="underline">
+            LocationIQ
+          </a>{' '}
+          — datos de{' '}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">
+            © OpenStreetMap
+          </a>{' '}
+          contributors
+        </p>
       </div>
     );
   }
