@@ -11,7 +11,7 @@ const adminRoutes = require('./routes/admin');
 const geocodeRoutes = require('./routes/geocode');
 
 const app = express();
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
+app.use(cors());
 app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));

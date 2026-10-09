@@ -1,4 +1,6 @@
-// Utilidades para hablar con TomTom (geocodificación + tiempo de traslado con tráfico).
+// Utilidades para hablar con TomTom — tiempo de traslado con tráfico en vivo.
+// La geocodificación de direcciones ahora vive en utils/locationiq.js (mejor
+// cobertura en Bogotá); TomTom se queda encargado solo del cálculo de ruta.
 // Requiere Node 18+ (usa el fetch nativo, sin dependencias extra).
 
 const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
@@ -7,29 +9,6 @@ function assertApiKey() {
   if (!TOMTOM_API_KEY) {
     throw new Error('Falta configurar TOMTOM_API_KEY en las variables de entorno del servidor');
   }
-}
-
-/**
- * Convierte una dirección de texto en coordenadas usando el endpoint de Geocode de TomTom
- * (pensado para direcciones completas enviadas por una aplicación, a diferencia de Fuzzy
- * Search que es para autocompletar mientras alguien escribe).
- */
-async function geocodeAddress(address) {
-  assertApiKey();
-  const url = `https://api.tomtom.com/search/2/geocode/${encodeURIComponent(address)}.json?key=${TOMTOM_API_KEY}&limit=1`;
-
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TomTom geocode respondió ${res.status}`);
-  const data = await res.json();
-
-  const top = data.results?.[0];
-  if (!top) throw new Error('No se encontró esa dirección. Intenta ser más específico (calle, número, ciudad).');
-
-  return {
-    lat: top.position.lat,
-    lng: top.position.lon,
-    formattedAddress: top.address?.freeformAddress || address,
-  };
 }
 
 /**
@@ -53,4 +32,4 @@ async function getTravelMinutes(from, to, departAt) {
   return Math.ceil(seconds / 60);
 }
 
-module.exports = { geocodeAddress, getTravelMinutes };
+module.exports = { getTravelMinutes };
