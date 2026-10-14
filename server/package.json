@@ -5,7 +5,7 @@
   "description": "API para agendamiento de peluquería/spa de mascotas",
   "main": "src/index.js",
   "engines": {
-    "node": ">=18"
+    "node": "18.x"
   },
   "scripts": {
     "dev": "nodemon src/index.js",
