@@ -44,6 +44,12 @@ router.post('/', async (req, res) => {
   if (!petId || !serviceId || !date || !startTime || !address || lat === undefined || lng === undefined) {
     return res.status(400).json({ error: 'petId, serviceId, date, startTime, address, lat y lng son requeridos' });
   }
+  
+  const now = new Date();
+  const selectedDateTime = new Date(`${date}T${startTime}`);
+  if (selectedDateTime < now) {
+    return res.status(400).json({ error: 'No es posible agendar una cita en una hora o fecha que ya pasó.' });
+  }
 
   const client = await pool.connect();
   try {
