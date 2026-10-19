@@ -9,22 +9,30 @@ router.use(requireAuth, requireAdmin);
 // Agenda del día con la "ficha técnica express": alertas de comportamiento/salud de cada mascota
 router.get('/appointments', async (req, res) => {
   const { date } = req.query;
-  if (!date) return res.status(400).json({ error: 'date es requerido' });
+  
+  let query = `
+    SELECT a.*, 
+           p.name AS pet_name, p.species, p.breed, p.size,
+           p.is_reactive, p.is_allergic, p.allergy_notes, p.is_geriatric, p.medical_conditions,
+           s.name AS service_name,
+           u.name AS client_name, u.phone AS client_phone
+    FROM appointments a
+    JOIN pets p ON p.id = a.pet_id
+    JOIN services s ON s.id = a.service_id
+    JOIN users u ON u.id = a.client_id
+  `;
+  
+  let params = [];
 
-  const result = await pool.query(
-    `SELECT a.*, 
-            p.name AS pet_name, p.species, p.breed, p.size,
-            p.is_reactive, p.is_allergic, p.allergy_notes, p.is_geriatric, p.medical_conditions,
-            s.name AS service_name,
-            u.name AS client_name, u.phone AS client_phone
-     FROM appointments a
-     JOIN pets p ON p.id = a.pet_id
-     JOIN services s ON s.id = a.service_id
-     JOIN users u ON u.id = a.client_id
-     WHERE a.appointment_date = $1
-     ORDER BY a.start_time`,
-    [date]
-  );
+  // Si envían fecha, filtra por ella; si no, muéstralas todas ordenadas por fecha reciente
+  if (date) {
+    query += ` WHERE a.appointment_date = $1 ORDER BY a.start_time`;
+    params.push(date);
+  } else {
+    query += ` ORDER BY a.appointment_date DESC, a.start_time DESC LIMIT 100`;
+  }
+
+  const result = await pool.query(query, params);
   res.json({ appointments: result.rows });
 });
 
