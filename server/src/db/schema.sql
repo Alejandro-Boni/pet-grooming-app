@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS pets (
 
 CREATE TABLE IF NOT EXISTS services (
   id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
+  name TEXT NOT NULL UNIQUE,
   description TEXT,
   base_duration_minutes INTEGER NOT NULL,
   active BOOLEAN NOT NULL DEFAULT true
@@ -101,4 +101,4 @@ INSERT INTO services (name, description, base_duration_minutes) VALUES
   ('Peluquería completa', 'Baño, corte de pelo a tijera o máquina, y perfilado', 90),
   ('Desparasitación', 'Aplicación de producto antiparasitario externo', 20),
   ('Corte de uñas', 'Corte y limado de uñas', 15)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO NOTHING;

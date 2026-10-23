@@ -6,33 +6,24 @@ const { requireAdmin } = require('../middleware/requireAdmin');
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
 
-// Agenda del día con la "ficha técnica express": alertas de comportamiento/salud de cada mascota
 router.get('/appointments', async (req, res) => {
   const { date } = req.query;
-  
-  let query = `
-    SELECT a.*, 
-           p.name AS pet_name, p.species, p.breed, p.size,
-           p.is_reactive, p.is_allergic, p.allergy_notes, p.is_geriatric, p.medical_conditions,
-           s.name AS service_name,
-           u.name AS client_name, u.phone AS client_phone
-    FROM appointments a
-    JOIN pets p ON p.id = a.pet_id
-    JOIN services s ON s.id = a.service_id
-    JOIN users u ON u.id = a.client_id
-  `;
-  
-  let params = [];
+  if (!date) return res.status(400).json({ error: 'date es requerido' });
 
-  // Si envían fecha, filtra por ella; si no, muéstralas todas ordenadas por fecha reciente
-  if (date) {
-    query += ` WHERE a.appointment_date = $1 ORDER BY a.start_time`;
-    params.push(date);
-  } else {
-    query += ` ORDER BY a.appointment_date DESC, a.start_time DESC LIMIT 100`;
-  }
-
-  const result = await pool.query(query, params);
+  const result = await pool.query(
+    `SELECT a.*, 
+            p.name AS pet_name, p.species, p.breed, p.size,
+            p.is_reactive, p.is_allergic, p.allergy_notes, p.is_geriatric, p.medical_conditions,
+            s.name AS service_name, s.price_cop,
+            u.name AS client_name, u.phone AS client_phone
+     FROM appointments a
+     JOIN pets p ON p.id = a.pet_id
+     JOIN services s ON s.id = a.service_id
+     JOIN users u ON u.id = a.client_id
+     WHERE a.appointment_date = $1
+     ORDER BY a.start_time`,
+    [date]
+  );
   res.json({ appointments: result.rows });
 });
 
@@ -49,10 +40,9 @@ router.patch('/appointments/:id', async (req, res) => {
   res.json({ appointment: result.rows[0] });
 });
 
-// Historial de servicios de un cliente (qué se le hizo la última vez, notas del estilista)
 router.get('/clients/:clientId/history', async (req, res) => {
   const result = await pool.query(
-    `SELECT a.*, p.name AS pet_name, s.name AS service_name
+    `SELECT a.*, p.name AS pet_name, s.name AS service_name, s.price_cop
      FROM appointments a
      JOIN pets p ON p.id = a.pet_id
      JOIN services s ON s.id = a.service_id
@@ -63,7 +53,6 @@ router.get('/clients/:clientId/history', async (req, res) => {
   res.json({ appointments: result.rows });
 });
 
-// Buscar clientes por nombre/teléfono/correo (para abrir su historial)
 router.get('/clients', async (req, res) => {
   const { q } = req.query;
   const result = await pool.query(
@@ -75,7 +64,6 @@ router.get('/clients', async (req, res) => {
   res.json({ clients: result.rows });
 });
 
-// Bloqueos de disponibilidad (días festivos, horas puntuales)
 router.get('/blackouts', async (req, res) => {
   const result = await pool.query('SELECT * FROM availability_blocks ORDER BY block_date');
   res.json({ blackouts: result.rows });
@@ -96,7 +84,6 @@ router.delete('/blackouts/:id', async (req, res) => {
   res.status(204).end();
 });
 
-// Cupo máximo de mascotas atendidas simultáneamente
 router.get('/settings', async (req, res) => {
   const result = await pool.query('SELECT key, value FROM settings');
   res.json({ settings: result.rows });

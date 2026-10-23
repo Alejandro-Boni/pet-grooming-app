@@ -4,6 +4,7 @@ import StepIndicator from '../../components/StepIndicator';
 import PetCard from '../../components/PetCard';
 import AddressInput from '../../components/AddressInput';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
+import { formatPrice } from '../../utils/format';
 
 const STEPS = ['Mascota', 'Servicio', 'Dirección y horario', 'Confirmación'];
 
@@ -13,7 +14,7 @@ export default function BookingFlow() {
   const [services, setServices] = useState([]);
   const [selectedPet, setSelectedPet] = useState(null);
   const [selectedService, setSelectedService] = useState(null);
-  const [location, setLocation] = useState(null); // { address, lat, lng }
+  const [location, setLocation] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState(null);
@@ -54,19 +55,17 @@ export default function BookingFlow() {
           <p className="font-display text-lg text-ink">{selectedPet.name}</p>
           <p className="mt-3 text-sm text-ink/60">Servicio</p>
           <p className="text-ink">{selectedService.name}</p>
+          {formatPrice(selectedService.price_cop) && (
+            <>
+              <p className="mt-3 text-sm text-ink/60">Precio</p>
+              <p className="text-ink">{formatPrice(selectedService.price_cop)}</p>
+            </>
+          )}
           <p className="mt-3 text-sm text-ink/60">Dirección</p>
           <p className="text-ink">{location.address}</p>
           <p className="mt-3 text-sm text-ink/60">Fecha y hora</p>
           <p className="text-ink">
-            <p className="text-ink">
-  {new Date(confirmedAppointment.appointment_date).toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC'
-  })} a las {confirmedAppointment.start_time}
-</p>
+            {confirmedAppointment.appointment_date} a las {confirmedAppointment.start_time}
           </p>
         </div>
         <div className="mt-5 rounded-xl bg-ochre/10 p-4 text-sm text-ink/80">
@@ -115,7 +114,12 @@ export default function BookingFlow() {
                   selectedService?.id === service.id ? 'border-ochre bg-ochre/5' : 'border-sage/50 bg-cream'
                 }`}
               >
-                <p className="font-display text-lg text-ink">{service.name}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-display text-lg text-ink">{service.name}</p>
+                  {formatPrice(service.price_cop) && (
+                    <p className="shrink-0 font-display text-lg text-pine">{formatPrice(service.price_cop)}</p>
+                  )}
+                </div>
                 <p className="mt-1 text-sm text-ink/60">{service.description}</p>
               </button>
             ))}
@@ -186,6 +190,9 @@ export default function BookingFlow() {
           <div className="mt-4 space-y-2 rounded-xl border border-sage/50 bg-cream p-5 text-sm">
             <p><span className="text-ink/60">Mascota:</span> {selectedPet.name}</p>
             <p><span className="text-ink/60">Servicio:</span> {selectedService.name}</p>
+            {formatPrice(selectedService.price_cop) && (
+              <p><span className="text-ink/60">Precio:</span> {formatPrice(selectedService.price_cop)}</p>
+            )}
             <p><span className="text-ink/60">Dirección:</span> {location.address}</p>
             <p><span className="text-ink/60">Fecha:</span> {selectedSlot.date}</p>
             <p><span className="text-ink/60">Hora:</span> {selectedSlot.time}</p>
