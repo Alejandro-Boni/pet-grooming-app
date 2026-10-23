@@ -2,9 +2,6 @@ const pool = require('../db/pool');
 const { calculateDurationMinutes, SLOT_GRANULARITY_MINUTES } = require('./duration');
 const { getTravelMinutes } = require('./tomtom');
 
-// Si TomTom falla para un vecino puntual (dirección rara, error transitorio de red), se asume
-// un traslado conservador en vez de ignorar la validación — así el sistema falla hacia el lado
-// seguro (ofrece menos horarios) en lugar de arriesgarse a un cruce de citas.
 const FALLBACK_TRAVEL_MINUTES = 60;
 
 function timeToMinutes(t) {
@@ -23,19 +20,29 @@ function rangesOverlap(aStart, aEnd, bStart, bEnd) {
 }
 
 function toIsoDepartAt(date, timeStr) {
-  // date: "YYYY-MM-DD", timeStr: "HH:MM" o "HH:MM:SS" → ISO local sin offset explícito
-  // (Node/TomTom lo interpretan como hora del servidor; ver nota en el README sobre zona horaria).
   return `${date}T${timeStr.length === 5 ? timeStr + ':00' : timeStr}`;
 }
 
 /**
- * Calcula, UNA sola vez por cita vecina (no por cada franja de 15 min candidata), los minutos
- * de traslado en ambos sentidos entre esa cita y la ubicación de la nueva cita candidata. Esto
- * mantiene el consumo de la cuota gratuita de TomTom bajo control incluso si el día tiene
- * muchas franjas candidatas.
+ * Fecha y hora actuales en Bogotá (UTC-5), sin importar el huso horario del servidor
+ * (Render corre en UTC). Evita ofrecer o permitir agendar horas que ya pasaron hoy.
  */
+function nowInBogota() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((p) => p.type === type).value;
+
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    minutes: Number(get('hour')) * 60 + Number(get('minute')),
+  };
+}
+
 async function buildTravelCache({ date, candidateCoord, existingAppts }) {
-  const cache = new Map(); // apptId -> { toCandidate, fromCandidate } en minutos
+  const cache = new Map();
 
   await Promise.all(
     existingAppts.map(async (appt) => {
@@ -57,16 +64,6 @@ async function buildTravelCache({ date, candidateCoord, existingAppts }) {
   return cache;
 }
 
-/**
- * Con un solo vehículo, las citas del día forman una sola ruta secuencial. Esta función
- * revisa únicamente la cita inmediatamente anterior y la inmediatamente siguiente a la
- * franja candidata (las demás no importan: si el hueco alcanza con las vecinas, alcanza
- * con todas). Devuelve true si hay tiempo de traslado suficiente hacia y desde la nueva cita,
- * según los minutos ya calculados por TomTom en `travelCache`.
- *
- * NOTA: si el negocio llega a sumar un segundo vehículo, esta función ya no alcanza —
- * habría que asignar cada cita a un vehículo/ruta (un problema distinto, de ruteo).
- */
 function hasTravelBuffer({ candidateStart, candidateEnd, sortedAppointments, travelCache }) {
   const previous = [...sortedAppointments].reverse().find((a) => a.end <= candidateStart);
   const next = sortedAppointments.find((a) => a.start >= candidateEnd);
@@ -82,16 +79,6 @@ function hasTravelBuffer({ candidateStart, candidateEnd, sortedAppointments, tra
   return true;
 }
 
-/**
- * Devuelve la lista de horas de inicio disponibles (formato "HH:MM") para una fecha,
- * dado un servicio, el tamaño de la mascota y la ubicación (lat/lng) donde se prestará
- * el servicio. Considera:
- *  - horario de atención del día de la semana
- *  - bloqueos de disponibilidad (día completo o rangos de horas)
- *  - cupo máximo de mascotas simultáneas (settings.max_concurrent_pets)
- *  - citas ya existentes ese día (sin contar las canceladas)
- *  - tiempo de traslado real (con tráfico, vía TomTom) hacia/desde la cita anterior y la siguiente
- */
 async function getAvailableSlots({ date, serviceId, petSize, lat, lng }) {
   const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
 
@@ -119,6 +106,9 @@ async function getAvailableSlots({ date, serviceId, petSize, lat, lng }) {
   const openMin = timeToMinutes(hours.open_time);
   const closeMin = timeToMinutes(hours.close_time);
 
+  const { date: todayBogota, minutes: nowMinutesBogota } = nowInBogota();
+  const isToday = date === todayBogota;
+
   const blockedRanges = blocksRes.rows
     .filter((b) => b.start_time !== null)
     .map((b) => ({ start: timeToMinutes(b.start_time), end: timeToMinutes(b.end_time) }));
@@ -135,7 +125,6 @@ async function getAvailableSlots({ date, serviceId, petSize, lat, lng }) {
     }))
     .sort((a, b) => a.start - b.start);
 
-  // Solo se llama a TomTom si de verdad hay citas vecinas ese día — un día vacío no gasta cuota.
   const travelCache =
     existingAppts.length > 0
       ? await buildTravelCache({ date, candidateCoord: { lat, lng }, existingAppts })
@@ -147,6 +136,8 @@ async function getAvailableSlots({ date, serviceId, petSize, lat, lng }) {
     candidateStart + durationMinutes <= closeMin;
     candidateStart += SLOT_GRANULARITY_MINUTES
   ) {
+    if (isToday && candidateStart <= nowMinutesBogota) continue;
+
     const candidateEnd = candidateStart + durationMinutes;
 
     const hitsBlock = blockedRanges.some((b) => rangesOverlap(candidateStart, candidateEnd, b.start, b.end));
@@ -172,6 +163,7 @@ module.exports = {
   hasTravelBuffer,
   buildTravelCache,
   toIsoDepartAt,
+  nowInBogota,
   FALLBACK_TRAVEL_MINUTES,
   timeToMinutes,
   minutesToTime,

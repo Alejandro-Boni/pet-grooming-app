@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import StatusBadge from '../../components/StatusBadge';
+import { formatPrice } from '../../utils/format';
 
 export default function MyAppointments() {
   const [appointments, setAppointments] = useState([]);
@@ -27,7 +28,10 @@ export default function MyAppointments() {
               <p className="font-display text-lg text-ink">{a.pet_name}</p>
               <StatusBadge status={a.status} />
             </div>
-            <p className="mt-1 text-sm text-ink/60">{a.service_name}</p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-sm text-ink/60">{a.service_name}</p>
+              {formatPrice(a.price_cop) && <p className="text-sm text-ink/60">{formatPrice(a.price_cop)}</p>}
+            </div>
             <p className="text-sm text-ink/60">{a.address}</p>
             <p className="text-sm text-ink/60">
               {a.appointment_date} · {a.start_time}

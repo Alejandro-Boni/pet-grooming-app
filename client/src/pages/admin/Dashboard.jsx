@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import StatusBadge from '../../components/StatusBadge';
 import PetAlerts from '../../components/PetAlerts';
+import { formatPrice } from '../../utils/format';
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -63,7 +64,10 @@ export default function Dashboard() {
                   </p>
                   <StatusBadge status={a.status} />
                 </div>
-                <p className="mt-1 text-sm text-ink/60">{a.service_name}</p>
+                <div className="mt-1 flex items-center justify-between">
+                  <p className="text-sm text-ink/60">{a.service_name}</p>
+                  {formatPrice(a.price_cop) && <p className="text-sm font-medium text-pine">{formatPrice(a.price_cop)}</p>}
+                </div>
                 <PetAlerts pet={a} />
               </button>
 

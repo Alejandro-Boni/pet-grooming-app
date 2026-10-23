@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../api/client';
 
 export default function Login() {
   const { login, signup, error } = useAuth();
@@ -16,7 +17,12 @@ export default function Login() {
     try {
       if (mode === 'login') await login(email, password);
       else await signup(email, password);
-      navigate('/app');
+
+      // Se consulta el rol directo al backend (en vez de esperar a que el
+      // contexto se actualice solo) para poder redirigir ya mismo al panel
+      // correcto, sin que el admin tenga que escribir /admin a mano.
+      const { user } = await api.get('/api/auth/me');
+      navigate(user.role === 'admin' ? '/admin' : '/app');
     } catch {
       // el mensaje de error ya queda disponible vía useAuth().error
     } finally {

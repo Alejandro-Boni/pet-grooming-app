@@ -7,6 +7,7 @@ const {
   minutesToTime,
   rangesOverlap,
   toIsoDepartAt,
+  nowInBogota,
   FALLBACK_TRAVEL_MINUTES,
 } = require('../utils/slots');
 const { getTravelMinutes } = require('../utils/tomtom');
@@ -14,41 +15,20 @@ const { getTravelMinutes } = require('../utils/tomtom');
 const router = express.Router();
 router.use(requireAuth);
 
-/**
- * POST /api/appointments
- * Body: { petId, serviceId, date: 'YYYY-MM-DD', startTime: 'HH:MM', address, lat, lng }
- *
- * Además de la validación de cupo, se revisa el tiempo de traslado real (vía TomTom, con
- * tráfico) hacia la cita anterior y desde la cita siguiente de ese día — como ya se conoce
- * el horario exacto elegido, aquí solo hacen falta como máximo 2 llamadas a TomTom (el
- * vecino inmediato anterior y el siguiente), no una por cada cita del día.
- *
- * Algoritmo de control de concurrencia:
- * Dos clientes podrían intentar agendar el mismo horario al mismo tiempo. Para evitar
- * que ambos queden agendados (condición de carrera), la transacción toma un bloqueo de
- * asesoramiento (advisory lock) de PostgreSQL específico para esa fecha ANTES de leer
- * las citas existentes. Eso serializa a nivel de base de datos todas las solicitudes de
- * agendamiento para el mismo día: la primera transacción en llegar hace su verificación
- * y su inserción, libera el bloqueo al hacer COMMIT, y solo entonces la segunda
- * transacción puede continuar y ver la cita recién creada — por lo que la detecta como
- * conflicto y es rechazada con 409, en vez de crear una doble reserva.
- *
- * NOTA de diseño: las llamadas a TomTom ocurren DENTRO de la transacción (con el bloqueo
- * ya tomado), para que el chequeo de vecinos sea consistente con lo que se va a insertar.
- * Eso mantiene ocupado el bloqueo de ese día por el tiempo de una llamada de red (normalmente
- * unos cientos de ms) — con el volumen de un negocio pequeño esto no es un problema real,
- * pero es la razón por la que no conviene mover estas llamadas fuera de la transacción.
- */
 router.post('/', async (req, res) => {
   const { petId, serviceId, date, startTime, address, lat, lng } = req.body;
   if (!petId || !serviceId || !date || !startTime || !address || lat === undefined || lng === undefined) {
     return res.status(400).json({ error: 'petId, serviceId, date, startTime, address, lat y lng son requeridos' });
   }
-  
-  const now = new Date();
-  const selectedDateTime = new Date(`${date}T${startTime}`);
-  if (selectedDateTime < now) {
-    return res.status(400).json({ error: 'No es posible agendar una cita en una hora o fecha que ya pasó.' });
+
+  const startMin = timeToMinutes(startTime);
+
+  const { date: todayBogota, minutes: nowMinutesBogota } = nowInBogota();
+  if (date === todayBogota && startMin <= nowMinutesBogota) {
+    return res.status(409).json({ error: 'Esa hora ya pasó. Elige un horario futuro.' });
+  }
+  if (date < todayBogota) {
+    return res.status(409).json({ error: 'No se puede agendar en una fecha pasada.' });
   }
 
   const client = await pool.connect();
@@ -62,14 +42,11 @@ router.post('/', async (req, res) => {
     if (!service) return res.status(404).json({ error: 'Servicio no encontrado' });
 
     const durationMinutes = calculateDurationMinutes(service.base_duration_minutes, pet.size);
-    const startMin = timeToMinutes(startTime);
     const endMin = startMin + durationMinutes;
     const endTime = minutesToTime(endMin);
     const candidateCoord = { lat: Number(lat), lng: Number(lng) };
 
     await client.query('BEGIN');
-
-    // Bloqueo exclusivo para esta fecha: serializa el agendamiento por día.
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [date]);
 
     const settingsRes = await client.query("SELECT value FROM settings WHERE key = 'max_concurrent_pets'");
@@ -153,10 +130,9 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Historial y próximas citas del cliente autenticado
 router.get('/mine', async (req, res) => {
   const result = await pool.query(
-    `SELECT a.*, p.name AS pet_name, s.name AS service_name
+    `SELECT a.*, p.name AS pet_name, s.name AS service_name, s.price_cop
      FROM appointments a
      JOIN pets p ON p.id = a.pet_id
      JOIN services s ON s.id = a.service_id
