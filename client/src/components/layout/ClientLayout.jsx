@@ -11,10 +11,13 @@ export default function ClientLayout() {
   const { logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-linen">
-      <header className="flex items-center justify-between border-b border-sage/40 px-5 py-4">
-        <span className="font-display text-xl text-pine">Peluquería de Mascotas</span>
-        <button onClick={logout} className="text-sm text-ink/50 underline underline-offset-2">
+    <div className="min-h-screen bg-[#0F0F0F] text-white">
+      <header className="flex items-center justify-between border-b border-[#D4AF37]/30 bg-[#111111] px-5 py-4">
+        <span className="font-display text-xl text-[#E5C158]">Peluquería de Mascotas</span>
+        <button
+          onClick={logout}
+          className="text-sm text-[#F1E5C5] underline underline-offset-2 hover:text-white"
+        >
           Salir
         </button>
       </header>
@@ -23,7 +26,7 @@ export default function ClientLayout() {
         <Outlet />
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-sage/40 bg-cream">
+      <nav className="fixed bottom-0 left-0 right-0 border-t border-[#D4AF37]/30 bg-[#111111]">
         <div className="mx-auto flex max-w-lg justify-around py-2">
           {TABS.map((tab) => (
             <NavLink
@@ -31,7 +34,11 @@ export default function ClientLayout() {
               to={tab.to}
               end={tab.end}
               className={({ isActive }) =>
-                `rounded-full px-4 py-1.5 text-sm ${isActive ? 'bg-pine text-cream' : 'text-ink/60'}`
+                `rounded-full px-4 py-1.5 text-sm transition ${
+                  isActive
+                    ? 'bg-[#D4AF37] text-[#0F0F0F] font-semibold'
+                    : 'text-[#F1E5C5] hover:text-white'
+                }`
               }
             >
               {tab.label}

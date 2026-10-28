@@ -5,7 +5,7 @@ import PetForm from '../../components/PetForm';
 
 export default function MyPets() {
   const [pets, setPets] = useState([]);
-  const [editingPet, setEditingPet] = useState(undefined); // undefined = cerrado, null = crear, objeto = editar
+  const [editingPet, setEditingPet] = useState(undefined);
   const [isSaving, setIsSaving] = useState(false);
 
   function loadPets() {
@@ -19,6 +19,7 @@ export default function MyPets() {
     try {
       if (editingPet?.id) await api.put(`/api/pets/${editingPet.id}`, petData);
       else await api.post('/api/pets', petData);
+
       setEditingPet(undefined);
       loadPets();
     } finally {
@@ -33,12 +34,12 @@ export default function MyPets() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-[#0F0F0F] text-white">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl text-ink">Mis mascotas</h1>
+        <h1 className="font-display text-2xl text-white">Mis mascotas</h1>
         <button
           onClick={() => setEditingPet(null)}
-          className="rounded-full bg-ochre px-4 py-2 text-sm font-medium text-cream"
+          className="gold-button px-4 py-2 text-sm"
         >
           Añadir mascota
         </button>
@@ -48,17 +49,19 @@ export default function MyPets() {
         {pets.map((pet) => (
           <PetCard key={pet.id} pet={pet} onEdit={setEditingPet} onDelete={handleDelete} />
         ))}
+
         {pets.length === 0 && (
-          <p className="text-sm text-ink/50">Aún no has registrado ninguna mascota.</p>
+          <p className="text-sm text-[#F1E5C5]">Aún no has registrado ninguna mascota.</p>
         )}
       </div>
 
       {editingPet !== undefined && (
-        <div className="fixed inset-0 z-10 flex items-end bg-ink/40 sm:items-center sm:justify-center">
-          <div className="w-full max-w-md rounded-t-2xl bg-linen p-6 sm:rounded-2xl">
-            <h2 className="font-display text-xl text-ink">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[28px] border border-[#D4AF37]/30 bg-[#111111] p-6 shadow-gold">
+            <h2 className="font-display text-2xl text-white">
               {editingPet ? `Editar a ${editingPet.name}` : 'Nueva mascota'}
             </h2>
+
             <div className="mt-4">
               <PetForm
                 initialPet={editingPet}

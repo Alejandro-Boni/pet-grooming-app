@@ -8,20 +8,51 @@
   html {
     scroll-behavior: smooth;
   }
+
   body {
-    -webkit-font-smoothing: antialiased;
+    @apply bg-[#0F0F0F] text-white antialiased;
+    background-image:
+      radial-gradient(circle at top, rgba(212, 175, 55, 0.14), transparent 30%),
+      linear-gradient(180deg, #0f0f0f 0%, #121212 100%);
   }
+
   h1, h2, h3 {
     font-family: theme('fontFamily.display');
   }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 175, 55, 0.7) rgba(255,255,255,0.04);
+  }
+
+  ::selection {
+    background: rgba(212, 175, 55, 0.35);
+  }
+
+  button, input, select {
+    transition: all 180ms ease;
+  }
+
   :focus-visible {
-    outline: 2px solid theme('colors.ochre.DEFAULT');
+    outline: 2px solid #D4AF37;
     outline-offset: 2px;
   }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-    }
+}
+
+@layer components {
+  .gold-button {
+    @apply rounded-full border border-[#D4AF37]/80 bg-gradient-to-r from-[#E5C158] via-[#D4AF37] to-[#A87C1F] text-[#0F0F0F] font-semibold shadow-gold hover:brightness-110 hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .glass-card {
+    @apply rounded-3xl border border-[#D4AF37]/30 bg-white/5 backdrop-blur-xl shadow-gold;
+  }
+
+  .soft-label {
+    @apply inline-flex items-center rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-3 py-1 text-xs font-medium text-[#E5C158];
+  }
+
+  .royal-panel {
+    @apply rounded-[28px] border border-[#D4AF37]/35 bg-[#111111]/90 p-5 shadow-gold backdrop-blur-md;
   }
 }
