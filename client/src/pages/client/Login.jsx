@@ -80,9 +80,9 @@ export default function Login() {
           <div className="flex items-center justify-center p-6 sm:p-8 lg:p-10">
             <div className="w-full max-w-md">
               <div className="mb-6 text-center">
-                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-[#D4AF37]/60 bg-gradient-to-br from-[#E5C158] to-[#A87C1F] text-4xl text-[#0F0F0F] shadow-gold">
-                  🐶
-                </div>
+                <div className="login-dog-badge">
+  <span className="login-dog-emoji">🐶</span>
+</div>
                 <h2 className="font-display text-3xl text-white">
                   {mode === 'login' ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
                 </h2>

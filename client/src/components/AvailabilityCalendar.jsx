@@ -25,9 +25,11 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
 
   useEffect(() => {
     if (!petId || !serviceId || !lat || !lng || !selectedDate) return;
+
     setIsLoading(true);
     setError(null);
     setSelectedSlot(null);
+
     api
       .get(`/api/availability?date=${selectedDate}&serviceId=${serviceId}&petId=${petId}&lat=${lat}&lng=${lng}`)
       .then((data) => setSlots(data.slots))
@@ -41,15 +43,18 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
         {days.map((d) => {
           const key = formatDateKey(d);
           const isSelected = key === selectedDate;
+
           return (
             <button
               key={key}
               onClick={() => setSelectedDate(key)}
-              className={`flex min-w-[3.25rem] shrink-0 flex-col items-center rounded-xl border px-2 py-2 ${
-                isSelected ? 'border-ochre bg-ochre text-cream' : 'border-sage/50 bg-cream text-ink'
+              className={`flex min-w-[3.25rem] shrink-0 flex-col items-center rounded-xl border px-2 py-2 transition ${
+                isSelected
+                  ? 'border-[#D4AF37] bg-[#D4AF37] text-[#0F0F0F] shadow-gold'
+                  : 'border-[#D4AF37]/40 bg-[#111111] text-[#F1E5C5] hover:border-[#E5C158]'
               }`}
             >
-              <span className="text-xs uppercase">{WEEKDAY_LABEL[d.getDay()]}</span>
+              <span className="text-[10px] uppercase tracking-[0.12em]">{WEEKDAY_LABEL[d.getDay()]}</span>
               <span className="font-display text-lg">{d.getDate()}</span>
             </button>
           );
@@ -57,11 +62,14 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
       </div>
 
       <div className="mt-4">
-        {isLoading && <p className="text-sm text-ink/50">Buscando horarios disponibles…</p>}
-        {error && <p className="text-sm text-clay">{error}</p>}
+        {isLoading && <p className="text-sm text-[#F1E5C5]">Buscando horarios disponibles…</p>}
+        {error && <p className="text-sm text-red-300">{error}</p>}
         {!isLoading && !error && slots.length === 0 && (
-          <p className="text-sm text-ink/50">No hay horarios disponibles este día. Elige otra fecha.</p>
+          <p className="text-sm text-[#F1E5C5]">
+            No hay horarios disponibles este día. Elige otra fecha.
+          </p>
         )}
+
         <div className="flex flex-wrap gap-2">
           {slots.map((slot) => (
             <button
@@ -70,8 +78,10 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
                 setSelectedSlot(slot);
                 onSelectSlot?.({ date: selectedDate, time: slot });
               }}
-              className={`rounded-full border px-4 py-1.5 text-sm ${
-                selectedSlot === slot ? 'border-pine bg-pine text-cream' : 'border-sage/60 bg-cream text-ink'
+              className={`rounded-full border px-4 py-1.5 text-sm transition ${
+                selectedSlot === slot
+                  ? 'border-[#D4AF37] bg-[#D4AF37] text-[#0F0F0F] shadow-gold'
+                  : 'border-[#D4AF37]/40 bg-[#0F0F0F] text-[#F1E5C5] hover:border-[#E5C158]'
               }`}
             >
               {slot}
