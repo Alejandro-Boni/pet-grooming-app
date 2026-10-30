@@ -11,6 +11,7 @@ const {
   FALLBACK_TRAVEL_MINUTES,
 } = require('../utils/slots');
 const { getTravelMinutes } = require('../utils/tomtom');
+const { calculateServicePrice } = require('../utils/pricing');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -32,6 +33,7 @@ router.post('/', async (req, res) => {
   }
 
   const client = await pool.connect();
+
   try {
     const petRes = await client.query('SELECT * FROM pets WHERE id = $1 AND owner_id = $2', [petId, req.user.id]);
     const pet = petRes.rows[0];
@@ -41,6 +43,7 @@ router.post('/', async (req, res) => {
     const service = serviceRes.rows[0];
     if (!service) return res.status(404).json({ error: 'Servicio no encontrado' });
 
+    const finalPriceCop = calculateServicePrice(service.price_cop, pet.size);
     const durationMinutes = calculateDurationMinutes(service.base_duration_minutes, pet.size);
     const endMin = startMin + durationMinutes;
     const endTime = minutesToTime(endMin);
@@ -101,6 +104,7 @@ router.post('/', async (req, res) => {
         return res.status(409).json({ error: 'No alcanza el tiempo de traslado desde la cita anterior. Elige otro horario.' });
       }
     }
+
     if (next) {
       const needed = await getTravelMinutes(
         candidateCoord,
@@ -114,13 +118,22 @@ router.post('/', async (req, res) => {
     }
 
     const inserted = await client.query(
-      `INSERT INTO appointments (client_id, pet_id, service_id, address, lat, lng, appointment_date, start_time, end_time)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [req.user.id, petId, serviceId, address, lat, lng, date, startTime, endTime]
+      `INSERT INTO appointments (
+         client_id, pet_id, service_id, address, lat, lng, appointment_date, start_time, end_time, final_price_cop
+       )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING *`,
+      [req.user.id, petId, serviceId, address, lat, lng, date, startTime, endTime, finalPriceCop]
     );
 
     await client.query('COMMIT');
-    res.status(201).json({ appointment: inserted.rows[0] });
+    res.status(201).json({
+      appointment: {
+        ...inserted.rows[0],
+        final_price_cop: finalPriceCop,
+      },
+      final_price_cop: finalPriceCop,
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error creando cita', err);

@@ -46,6 +46,14 @@ export default function BookingFlow() {
     }
   }
 
+const finalPrice =
+  Math.round((selectedService?.price_cop ?? 0) * (
+    selectedPet?.size === 'pequeño' ? 1 :
+    selectedPet?.size === 'mediano' ? 1.2 :
+    selectedPet?.size === 'grande' ? 1.5 :
+    1
+  ));
+
   if (confirmedAppointment) {
     return (
       <div className="min-h-screen bg-[#0F0F0F] px-4 py-6 text-white">
@@ -229,7 +237,7 @@ export default function BookingFlow() {
                 <p><span className="text-[#F1E5C5]">Mascota:</span> {selectedPet.name}</p>
                 <p><span className="text-[#F1E5C5]">Servicio:</span> {selectedService.name}</p>
                 {formatPrice(selectedService.price_cop) && (
-                  <p><span className="text-[#F1E5C5]">Precio:</span> {formatPrice(selectedService.price_cop)}</p>
+                  <p><span className="text-[#F1E5C5]">Precio:</span> {formatPrice(finalPrice)}</p>
                 )}
                 <p><span className="text-[#F1E5C5]">Dirección:</span> {location.address}</p>
                 <p><span className="text-[#F1E5C5]">Fecha:</span> {selectedSlot.date}</p>

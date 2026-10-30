@@ -4,7 +4,19 @@ import { api } from '../api/client';
 const WEEKDAY_LABEL = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 
 function formatDateKey(date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isPastSlot(dateKey, slot) {
+  const [hours, minutes] = slot.split(':').map(Number);
+  const selectedDate = new Date(`${dateKey}T00:00:00`);
+  const slotDate = new Date(selectedDate);
+  slotDate.setHours(hours, minutes, 0, 0);
+
+  return slotDate.getTime() < Date.now();
 }
 
 export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSelectSlot }) {
@@ -32,7 +44,10 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
 
     api
       .get(`/api/availability?date=${selectedDate}&serviceId=${serviceId}&petId=${petId}&lat=${lat}&lng=${lng}`)
-      .then((data) => setSlots(data.slots))
+      .then((data) => {
+        const validSlots = (data.slots || []).filter((slot) => !isPastSlot(selectedDate, slot));
+        setSlots(validSlots);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, [petId, serviceId, lat, lng, selectedDate]);

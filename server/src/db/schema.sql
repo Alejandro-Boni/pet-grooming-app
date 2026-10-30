@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   end_time TIME NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'done', 'cancelled')),
   stylist_notes TEXT,
+  final_price_cop INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
