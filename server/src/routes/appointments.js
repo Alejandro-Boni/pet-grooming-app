@@ -16,6 +16,14 @@ const { calculateServicePrice } = require('../utils/pricing');
 const router = express.Router();
 router.use(requireAuth);
 
+function canCancelAppointment({ appointment_date, start_time }) {
+  const appointmentStart = new Date(`${appointment_date}T${start_time}:00-05:00`).getTime();
+  const now = Date.now();
+  const cancellationWindowMs = 4 * 60 * 60 * 1000;
+
+  return now + cancellationWindowMs <= appointmentStart;
+}
+
 router.post('/', async (req, res) => {
   const { petId, serviceId, date, startTime, address, lat, lng } = req.body;
   if (!petId || !serviceId || !date || !startTime || !address || lat === undefined || lng === undefined) {
@@ -61,7 +69,9 @@ router.post('/', async (req, res) => {
     );
     const wholeDayBlocked = blockRes.rows.some((b) => b.start_time === null);
     const hitsBlock = blockRes.rows.some(
-      (b) => b.start_time !== null && rangesOverlap(startMin, endMin, timeToMinutes(b.start_time), timeToMinutes(b.end_time))
+      (b) =>
+        b.start_time !== null &&
+        rangesOverlap(startMin, endMin, timeToMinutes(b.start_time), timeToMinutes(b.end_time))
     );
     if (wholeDayBlocked || hitsBlock) {
       await client.query('ROLLBACK');
@@ -99,6 +109,7 @@ router.post('/', async (req, res) => {
         candidateCoord,
         toIsoDepartAt(date, previous.endTimeStr)
       ).catch(() => FALLBACK_TRAVEL_MINUTES);
+
       if (startMin - previous.end < needed) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: 'No alcanza el tiempo de traslado desde la cita anterior. Elige otro horario.' });
@@ -111,6 +122,7 @@ router.post('/', async (req, res) => {
         { lat: next.lat, lng: next.lng },
         toIsoDepartAt(date, next.startTimeStr)
       ).catch(() => FALLBACK_TRAVEL_MINUTES);
+
       if (next.start - endMin < needed) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: 'No alcanza el tiempo de traslado hacia la siguiente cita. Elige otro horario.' });
@@ -157,11 +169,31 @@ router.get('/mine', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
+  const appointmentRes = await pool.query(
+    "SELECT * FROM appointments WHERE id = $1 AND client_id = $2",
+    [req.params.id, req.user.id]
+  );
+
+  const appointment = appointmentRes.rows[0];
+  if (!appointment) {
+    return res.status(404).json({ error: 'Cita no encontrada' });
+  }
+
+  if (appointment.status !== 'pending') {
+    return res.status(409).json({ error: 'Solo se pueden cancelar citas pendientes.' });
+  }
+
+  if (!canCancelAppointment(appointment)) {
+    return res.status(409).json({
+      error: 'La cancelación debe hacerse con al menos 4 horas de anticipación.',
+    });
+  }
+
   const result = await pool.query(
     "UPDATE appointments SET status = 'cancelled' WHERE id = $1 AND client_id = $2 RETURNING *",
     [req.params.id, req.user.id]
   );
-  if (!result.rows[0]) return res.status(404).json({ error: 'Cita no encontrada' });
+
   res.json({ appointment: result.rows[0] });
 });
 
