@@ -7,6 +7,7 @@ import ClientLayout from './components/layout/ClientLayout';
 import BookingFlow from './pages/client/BookingFlow';
 import MyPets from './pages/client/MyPets';
 import MyAppointments from './pages/client/MyAppointments';
+import AboutUs from './pages/client/AboutUs';
 
 import AdminLayout from './components/layout/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
@@ -49,6 +50,7 @@ function AppRoutes() {
         <Route index element={<BookingFlow />} />
         <Route path="mascotas" element={<MyPets />} />
         <Route path="citas" element={<MyAppointments />} />
+        <Route path="nosotros" element={<AboutUs />} />
       </Route>
 
       <Route
