@@ -17,11 +17,25 @@ const router = express.Router();
 router.use(requireAuth);
 
 function canCancelAppointment({ appointment_date, start_time }) {
-  const appointmentStart = new Date(`${appointment_date}T${start_time}:00-05:00`).getTime();
+  const appointmentStart = new Date(
+    `${appointment_date}T${String(start_time).slice(0, 5)}:00-05:00`
+  ).getTime();
   const now = Date.now();
   const cancellationWindowMs = 4 * 60 * 60 * 1000;
 
   return now + cancellationWindowMs <= appointmentStart;
+}
+
+function hasAppointmentPassed({ appointment_date, end_time }) {
+  const { date: today, minutes: nowMinutes } = nowInBogota();
+  const appointmentDate =
+    appointment_date instanceof Date ? appointment_date.toISOString().slice(0, 10) : appointment_date;
+  const appointmentEndMinutes = timeToMinutes(end_time);
+
+  return (
+    appointmentDate < today ||
+    (appointmentDate === today && appointmentEndMinutes <= nowMinutes)
+  );
 }
 
 router.post('/', async (req, res) => {
@@ -157,7 +171,13 @@ router.post('/', async (req, res) => {
 
 router.get('/mine', async (req, res) => {
   const result = await pool.query(
-    `SELECT a.*, p.name AS pet_name, s.name AS service_name, s.price_cop
+    `SELECT a.*, p.name AS pet_name, s.name AS service_name, s.price_cop,
+            CASE
+              WHEN a.status = 'pending'
+                AND (a.appointment_date + a.end_time) <= (NOW() AT TIME ZONE 'America/Bogota')
+              THEN 'past'
+              ELSE a.status
+            END AS display_status
      FROM appointments a
      JOIN pets p ON p.id = a.pet_id
      JOIN services s ON s.id = a.service_id
@@ -181,6 +201,10 @@ router.delete('/:id', async (req, res) => {
 
   if (appointment.status !== 'pending') {
     return res.status(409).json({ error: 'Solo se pueden cancelar citas pendientes.' });
+  }
+
+  if (hasAppointmentPassed(appointment)) {
+    return res.status(409).json({ error: 'La cita ya pasó y no se puede cancelar.' });
   }
 
   if (!canCancelAppointment(appointment)) {

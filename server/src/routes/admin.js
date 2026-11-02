@@ -11,7 +11,13 @@ router.get('/appointments', async (req, res) => {
   if (!date) return res.status(400).json({ error: 'date es requerido' });
 
   const result = await pool.query(
-    `SELECT a.*, 
+    `SELECT a.*,
+            CASE
+              WHEN a.status = 'pending'
+                AND (a.appointment_date + a.end_time) <= (NOW() AT TIME ZONE 'America/Bogota')
+              THEN 'past'
+              ELSE a.status
+            END AS display_status,
             p.name AS pet_name, p.species, p.breed, p.size,
             p.is_reactive, p.is_allergic, p.allergy_notes, p.is_geriatric, p.medical_conditions,
             s.name AS service_name, s.price_cop,
@@ -42,7 +48,13 @@ router.patch('/appointments/:id', async (req, res) => {
 
 router.get('/clients/:clientId/history', async (req, res) => {
   const result = await pool.query(
-    `SELECT a.*, p.name AS pet_name, s.name AS service_name, s.price_cop
+    `SELECT a.*, p.name AS pet_name, s.name AS service_name, s.price_cop,
+            CASE
+              WHEN a.status = 'pending'
+                AND (a.appointment_date + a.end_time) <= (NOW() AT TIME ZONE 'America/Bogota')
+              THEN 'past'
+              ELSE a.status
+            END AS display_status
      FROM appointments a
      JOIN pets p ON p.id = a.pet_id
      JOIN services s ON s.id = a.service_id
