@@ -29,7 +29,7 @@ export default function ClientHistory() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar por nombre, teléfono o correo"
-          className="flex-1 rounded-lg border border-sage/60 bg-cream px-3 py-2 text-sm text-ink"
+          className="flex-1 rounded-lg border border-[#D4AF37]/60 bg-[#1A1A1A] px-3 py-2 text-sm text-white caret-[#E5C158] placeholder:text-white/50 focus:border-[#D4AF37] focus:outline-none"
         />
         <button type="submit" className="rounded-full bg-pine px-4 py-2 text-sm text-cream">
           Buscar
@@ -56,7 +56,7 @@ export default function ClientHistory() {
             <div key={a.id} className="rounded-xl border border-sage/50 bg-cream p-4">
               <div className="flex items-center justify-between">
                 <p className="font-display text-lg text-ink">{a.pet_name} · {a.service_name}</p>
-                <StatusBadge status={a.status} />
+                <StatusBadge status={a.display_status || a.status} />
               </div>
               <p className="mt-1 text-sm text-ink/60">{a.appointment_date} · {a.start_time?.slice(0, 5)}</p>
               {a.stylist_notes && <p className="mt-2 text-sm text-ink/80">Nota: {a.stylist_notes}</p>}

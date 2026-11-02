@@ -34,10 +34,12 @@ export default function MyAppointments() {
       setFeedback(id, 'success', 'Cita cancelada correctamente.');
       load();
     } catch (err) {
-      const message =
-        'No se pudo cancelar la cita porque la cancelación solo está permitida con 4 horas de anticipación. ' +
-        'Si la cita empieza en menos de 4 horas, la reserva ya no puede cancelarse desde la app.';
-      setFeedback(id, 'error', message);
+      setFeedback(
+        id,
+        'error',
+        err.message ||
+          'No se pudo cancelar la cita. Recuerda que debe hacerse con al menos 4 horas de anticipación.'
+      );
     }
   }
 
@@ -48,6 +50,7 @@ export default function MyAppointments() {
       <div className="mt-5 space-y-3">
         {appointments.map((a) => {
           const feedback = cancelFeedback[a.id];
+          const displayStatus = a.display_status || a.status;
 
           return (
             <div
@@ -60,7 +63,7 @@ export default function MyAppointments() {
             >
               <div className="flex items-center justify-between">
                 <p className="font-display text-lg text-ink">{a.pet_name}</p>
-                <StatusBadge status={a.status} />
+                <StatusBadge status={displayStatus} />
               </div>
 
               <div className="mt-1 flex items-center justify-between">
@@ -91,7 +94,7 @@ export default function MyAppointments() {
                 </div>
               )}
 
-              {a.status === 'pending' && (
+              {a.status === 'pending' && displayStatus !== 'past' && (
                 <button
                   onClick={() => cancel(a.id)}
                   className="mt-3 text-xs text-clay underline underline-offset-2"

@@ -115,7 +115,7 @@ export default function Dashboard() {
                   <p className="font-display text-xl text-white">
                     {a.pet_name} <span className="text-sm font-sans text-[#F1E5C5]">· {a.client_name}</span>
                   </p>
-                  <StatusBadge status={a.status} />
+                  <StatusBadge status={a.display_status || a.status} />
                 </div>
 
                 <div className="mt-2 flex items-center justify-between">
