@@ -15,6 +15,21 @@ const STATUS_OPTIONS = [
   ['cancelled', 'Cancelada'],
 ];
 
+const monthlyIncome = 0;
+const frequentCustomers = 0;
+const automaticDiscounts = 0;
+
+const currencyFormatter = new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  maximumFractionDigits: 0,
+});
+
+const monthLabel = new Intl.DateTimeFormat('es-CO', {
+  month: 'long',
+  year: 'numeric',
+}).format(new Date());
+
 export default function Dashboard() {
   const [date, setDate] = useState(todayKey());
   const [appointments, setAppointments] = useState([]);
@@ -41,20 +56,34 @@ export default function Dashboard() {
       <div className="mb-6 grid gap-4 md:grid-cols-3">
         <div className="royal-panel">
           <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Ingresos del mes</p>
-          <h2 className="mt-3 text-4xl font-bold text-white">$4.850.000</h2>
-          <p className="mt-2 text-sm text-[#F1E5C5]">+18.4% versus el mes pasado</p>
+          <h2 className="mt-3 text-4xl font-bold text-white">
+            {currencyFormatter.format(monthlyIncome)}
+          </h2>
+          <p className="mt-2 text-sm text-[#F1E5C5]">
+            {monthlyIncome === 0
+              ? `Aún no hay ingresos registrados en ${monthLabel}.`
+              : 'Ingreso real del mes actual.'}
+          </p>
         </div>
 
         <div className="royal-panel">
           <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Clientes frecuentes</p>
-          <h2 className="mt-3 text-4xl font-bold text-white">128</h2>
-          <p className="mt-2 text-sm text-[#F1E5C5]">Tasa de retención alta</p>
+          <h2 className="mt-3 text-4xl font-bold text-white">{frequentCustomers}</h2>
+          <p className="mt-2 text-sm text-[#F1E5C5]">
+            {frequentCustomers === 0
+              ? 'Aún no hay clientes frecuentes.'
+              : 'Clientes con retención activa.'}
+          </p>
         </div>
 
         <div className="royal-panel">
           <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Descuentos automáticos</p>
-          <h2 className="mt-3 text-4xl font-bold text-white">12%</h2>
-          <p className="mt-2 text-sm text-[#F1E5C5]">Activados para clientes VIP</p>
+          <h2 className="mt-3 text-4xl font-bold text-white">{automaticDiscounts}%</h2>
+          <p className="mt-2 text-sm text-[#F1E5C5]">
+            {automaticDiscounts === 0
+              ? 'Sin descuentos activos aún.'
+              : 'Activados para clientes VIP'}
+          </p>
         </div>
       </div>
 
