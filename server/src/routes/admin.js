@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/requireAdmin');
+const { buildWhatsAppLink } = require('../services/whatsapp');
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
@@ -21,7 +22,8 @@ router.get('/appointments', async (req, res) => {
             p.name AS pet_name, p.species, p.breed, p.size,
             p.is_reactive, p.is_allergic, p.allergy_notes, p.is_geriatric, p.medical_conditions,
             s.name AS service_name, s.price_cop,
-            u.name AS client_name, u.phone AS client_phone
+            u.name AS client_name,
+            COALESCE(a.client_phone, u.phone) AS client_phone
      FROM appointments a
      JOIN pets p ON p.id = a.pet_id
      JOIN services s ON s.id = a.service_id
@@ -30,11 +32,27 @@ router.get('/appointments', async (req, res) => {
      ORDER BY a.start_time`,
     [date]
   );
+
   res.json({ appointments: result.rows });
 });
 
 router.patch('/appointments/:id', async (req, res) => {
   const { status, stylistNotes } = req.body;
+
+  const current = await pool.query(
+    `SELECT a.*, u.phone, p.name AS pet_name,
+            COALESCE(a.client_phone, u.phone) AS contact_phone
+     FROM appointments a
+     JOIN users u ON u.id = a.client_id
+     JOIN pets p ON p.id = a.pet_id
+     WHERE a.id = $1`,
+    [req.params.id]
+  );
+
+  if (!current.rows[0]) {
+    return res.status(404).json({ error: 'Cita no encontrada' });
+  }
+
   const result = await pool.query(
     `UPDATE appointments SET
        status = COALESCE($1, status),
@@ -42,8 +60,65 @@ router.patch('/appointments/:id', async (req, res) => {
      WHERE id = $3 RETURNING *`,
     [status || null, stylistNotes ?? null, req.params.id]
   );
-  if (!result.rows[0]) return res.status(404).json({ error: 'Cita no encontrada' });
-  res.json({ appointment: result.rows[0] });
+
+  if (!result.rows[0]) {
+    return res.status(404).json({ error: 'Cita no encontrada' });
+  }
+
+  let whatsappLink = null;
+
+  if (status === 'done') {
+    const phone = current.rows[0].contact_phone;
+    const message =
+      'Hola, tu servicio en Mascota Rey ya terminó. Puedes pasar a recoger a tu mascota cuando quieras. Gracias por confiar en nosotros.';
+
+    whatsappLink = buildWhatsAppLink(phone, message);
+
+    await pool.query(
+      `INSERT INTO appointment_reminders (appointment_id, type, status, sent_at, phone, message)
+       VALUES ($1, $2, 'sent', NOW(), $3, $4)`,
+      [req.params.id, 'service_finished', phone, message]
+    );
+  }
+
+  res.json({
+    appointment: result.rows[0],
+    whatsapp_link: whatsappLink,
+  });
+});
+
+router.post('/appointments/:id/send-pickup-reminder', async (req, res) => {
+  const appointmentRes = await pool.query(
+    `SELECT a.*, u.phone,
+            COALESCE(a.client_phone, u.phone) AS contact_phone
+     FROM appointments a
+     JOIN users u ON u.id = a.client_id
+     WHERE a.id = $1`,
+    [req.params.id]
+  );
+
+  const appointment = appointmentRes.rows[0];
+  if (!appointment) {
+    return res.status(404).json({ error: 'Cita no encontrada' });
+  }
+
+  const phone = appointment.contact_phone;
+  const message =
+    'Tu mascota ya está lista para recoger. Puedes pasar por ella en el vehículo móvil de Mascota Rey.';
+
+  const whatsappLink = buildWhatsAppLink(phone, message);
+
+  await pool.query(
+    `INSERT INTO appointment_reminders (appointment_id, type, status, sent_at, phone, message)
+     VALUES ($1, $2, 'sent', NOW(), $3, $4)`,
+    [appointment.id, 'pickup_ready', phone, message]
+  );
+
+  res.json({
+    ok: true,
+    whatsapp_link: whatsappLink,
+    message: 'Recordatorio de recogida listo',
+  });
 });
 
 router.get('/clients/:clientId/history', async (req, res) => {

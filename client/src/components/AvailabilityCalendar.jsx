@@ -36,11 +36,25 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!petId || !serviceId || !lat || !lng || !selectedDate) return;
+    if (
+      !petId ||
+      !serviceId ||
+      lat === null ||
+      lat === undefined ||
+      lng === null ||
+      lng === undefined ||
+      !selectedDate
+    ) {
+      setSlots([]);
+      setSelectedSlot(null);
+      onSelectSlot?.(null);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
     setSelectedSlot(null);
+    onSelectSlot?.(null);
 
     api
       .get(`/api/availability?date=${selectedDate}&serviceId=${serviceId}&petId=${petId}&lat=${lat}&lng=${lng}`)

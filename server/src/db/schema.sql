@@ -72,8 +72,12 @@ CREATE TABLE IF NOT EXISTS appointments (
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'done', 'cancelled')),
   stylist_notes TEXT,
   final_price_cop INTEGER NOT NULL DEFAULT 0,
+  client_phone TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE appointments
+  ADD COLUMN IF NOT EXISTS client_phone TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (appointment_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_client ON appointments (client_id);
