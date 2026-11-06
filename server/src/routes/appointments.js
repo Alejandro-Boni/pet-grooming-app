@@ -12,6 +12,7 @@ const {
 } = require('../utils/slots');
 const { getTravelMinutes } = require('../utils/tomtom');
 const { calculateServicePrice } = require('../utils/pricing');
+const { isServiceAvailableForPet } = require('../utils/service-rules');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -118,7 +119,17 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }
 
-    const finalPriceCop = calculateServicePrice(service.price_cop, pet.size);
+    if (!isServiceAvailableForPet(service, pet)) {
+      return res.status(400).json({
+        error: 'El servicio seleccionado no está disponible para el tipo o tamaño de tu mascota.',
+      });
+    }
+
+    const finalPriceCop = calculateServicePrice(
+      service.price_cop,
+      pet.size,
+      service.name
+    );
     const durationMinutes = calculateDurationMinutes(
       service.base_duration_minutes,
       pet.size

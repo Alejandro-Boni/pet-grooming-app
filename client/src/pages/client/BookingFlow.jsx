@@ -17,6 +17,8 @@ export default function BookingFlow() {
   const [step, setStep] = useState(1);
   const [pets, setPets] = useState([]);
   const [services, setServices] = useState([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [servicesError, setServicesError] = useState(null);
   const [selectedPet, setSelectedPet] = useState(null);
   const [selectedService, setSelectedService] = useState(null);
   const [location, setLocation] = useState(null);
@@ -37,8 +39,34 @@ export default function BookingFlow() {
 
   useEffect(() => {
     api.get('/api/pets').then((data) => setPets(data.pets));
-    api.get('/api/services').then((data) => setServices(data.services));
   }, []);
+
+  useEffect(() => {
+    if (!selectedPet) {
+      setServices([]);
+      setServicesLoading(false);
+      return undefined;
+    }
+
+    let active = true;
+    setServices([]);
+    setServicesLoading(true);
+    setServicesError(null);
+    api.get(`/api/services?petId=${encodeURIComponent(selectedPet.id)}`)
+      .then((data) => {
+        if (active) setServices(data.services);
+      })
+      .catch((err) => {
+        if (active) setServicesError(err.message || 'No se pudieron cargar los servicios.');
+      })
+      .finally(() => {
+        if (active) setServicesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedPet?.id, selectedPet?.size, selectedPet?.species]);
 
   async function confirmBooking() {
     if (!location || !selectedSlot || !isValidPhone(phone)) {
@@ -69,13 +97,7 @@ export default function BookingFlow() {
     }
   }
 
-  const finalPrice =
-    Math.round((selectedService?.price_cop ?? 0) * (
-      selectedPet?.size === 'pequeño' ? 1 :
-      selectedPet?.size === 'mediano' ? 1.2 :
-      selectedPet?.size === 'grande' ? 1.5 :
-      1
-    ));
+  const finalPrice = selectedService?.final_price_cop ?? selectedService?.price_cop ?? 0;
 
   if (confirmedAppointment) {
     return (
@@ -118,6 +140,7 @@ export default function BookingFlow() {
                 selected={selectedPet?.id === pet.id}
                 onSelect={() => {
                   setSelectedPet(pet);
+                  setSelectedService(null);
                   setSelectedSlot(null);
                 }}
               />
@@ -127,6 +150,21 @@ export default function BookingFlow() {
 
         {step === 2 && (
           <div className="mt-6 space-y-4">
+            {servicesError && (
+              <p className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+                {servicesError}
+              </p>
+            )}
+            {servicesLoading && (
+              <p className="rounded-xl border border-[#D4AF37]/30 bg-[#111111] p-4 text-sm text-[#F1E5C5]">
+                Cargando servicios...
+              </p>
+            )}
+            {!servicesLoading && !servicesError && services.length === 0 && (
+              <p className="rounded-xl border border-[#D4AF37]/30 bg-[#111111] p-4 text-sm text-[#F1E5C5]">
+                No hay servicios disponibles para esta mascota.
+              </p>
+            )}
             {services.map((service) => (
               <button
                 key={service.id}
@@ -143,7 +181,9 @@ export default function BookingFlow() {
               >
                 <p className="font-display text-xl text-white">{service.name}</p>
                 <p className="mt-2 text-sm text-[#F1E5C5]">{service.description}</p>
-                <p className="mt-2 text-[#E5C158]">{formatPrice(service.price_cop)}</p>
+                <p className="mt-2 text-[#E5C158]">
+                  {formatPrice(service.final_price_cop ?? service.price_cop)}
+                </p>
               </button>
             ))}
           </div>
