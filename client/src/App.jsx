@@ -8,11 +8,13 @@ import BookingFlow from './pages/client/BookingFlow';
 import MyPets from './pages/client/MyPets';
 import MyAppointments from './pages/client/MyAppointments';
 import AboutUs from './pages/client/AboutUs';
+import PublicReviews from './pages/client/PublicReviews';
 
 import AdminLayout from './components/layout/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
 import Availability from './pages/admin/Availability';
 import ClientHistory from './pages/admin/ClientHistory';
+import AdminReviews from './pages/admin/Reviews';
 
 function LoadingScreen() {
   return <div className="flex min-h-screen items-center justify-center bg-linen text-ink/50">Cargando…</div>;
@@ -51,6 +53,7 @@ function AppRoutes() {
         <Route path="mascotas" element={<MyPets />} />
         <Route path="citas" element={<MyAppointments />} />
         <Route path="nosotros" element={<AboutUs />} />
+        <Route path="resenas" element={<PublicReviews />} />
       </Route>
 
       <Route
@@ -64,6 +67,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="disponibilidad" element={<Availability />} />
         <Route path="clientes" element={<ClientHistory />} />
+        <Route path="resenas" element={<AdminReviews />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

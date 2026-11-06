@@ -9,6 +9,7 @@ const availabilityRoutes = require('./routes/availability');
 const appointmentRoutes = require('./routes/appointments');
 const adminRoutes = require('./routes/admin');
 const geocodeRoutes = require('./routes/geocode');
+const reviewRoutes = require('./routes/reviews');
 
 const app = express();
 app.use(cors());
@@ -16,6 +17,7 @@ app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+app.use('/api/reviews', reviewRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/services', serviceRoutes);
