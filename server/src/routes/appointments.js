@@ -310,6 +310,9 @@ router.get('/mine', async (req, res) => {
               p.name AS pet_name,
               s.name AS service_name,
               s.price_cop,
+              r.id AS review_id,
+              r.rating AS review_rating,
+              r.comment AS review_comment,
               COALESCE(a.client_phone, u.phone) AS contact_phone,
               CASE
                 WHEN a.status = 'pending'
@@ -322,6 +325,7 @@ router.get('/mine', async (req, res) => {
        JOIN pets p ON p.id = a.pet_id
        JOIN services s ON s.id = a.service_id
        JOIN users u ON u.id = a.client_id
+       LEFT JOIN reviews r ON r.appointment_id = a.id
        WHERE a.client_id = $1
        ORDER BY a.appointment_date DESC, a.start_time DESC`,
       [req.user.id]
@@ -333,6 +337,60 @@ router.get('/mine', async (req, res) => {
     return res.status(500).json({
       error: 'No se pudieron cargar las citas',
     });
+  }
+});
+
+router.post('/reviews', async (req, res) => {
+  const appointmentId = Number(req.body?.appointmentId);
+  const rating = Number(req.body?.rating);
+  const comment = typeof req.body?.comment === 'string'
+    ? req.body.comment.trim()
+    : '';
+
+  if (!Number.isSafeInteger(appointmentId) || appointmentId < 1) {
+    return res.status(400).json({ error: 'La cita indicada no es válida.' });
+  }
+
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'La calificación debe ser de 1 a 5 estrellas.' });
+  }
+
+  if (comment.length > 2000) {
+    return res.status(400).json({ error: 'El comentario no puede superar 2000 caracteres.' });
+  }
+
+  try {
+    const appointmentResult = await pool.query(
+      `SELECT id, status
+       FROM appointments
+       WHERE id = $1 AND client_id = $2`,
+      [appointmentId, req.user.id]
+    );
+    const appointment = appointmentResult.rows[0];
+
+    if (!appointment) {
+      return res.status(404).json({ error: 'Cita no encontrada.' });
+    }
+
+    if (appointment.status !== 'done') {
+      return res.status(409).json({ error: 'Solo puedes reseñar citas finalizadas.' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO reviews (appointment_id, customer_id, rating, comment)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, appointment_id, rating, comment, created_at`,
+      [appointmentId, req.user.id, rating, comment || null]
+    );
+
+    return res.status(201).json({ review: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'Ya enviaste una reseña para esta cita.' });
+    }
+
+    console.error('Error guardando reseña del cliente', err);
+    return res.status(500).json({ error: 'No se pudo guardar tu reseña.' });
   }
 });
 

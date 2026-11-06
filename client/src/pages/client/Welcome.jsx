@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import PublicReviews from './PublicReviews';
 
 function LuxuryBadge() {
   return (
@@ -88,7 +89,7 @@ export default function Welcome() {
               </div>
 
               <h1 className="max-w-3xl font-display text-4xl leading-none text-[#F7F1E3] sm:text-6xl">
-                Perruqueria Canina y Felina.
+                Peluquería Canina y Felina.
               </h1>
 
               <p className="mt-5 max-w-2xl text-base leading-7 text-[#F1E5C5]/80 sm:text-lg">
@@ -98,22 +99,25 @@ export default function Welcome() {
               <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
                 <Link
                   to="/login"
-                  className="inline-flex items-center justify-center rounded-full border border-[#D4AF37]/80 bg-gradient-to-r from-[#E5C158] via-[#D4AF37] to-[#A87C1F] px-8 py-4 text-base font-semibold text-[#111111] shadow-[0_12px_30px_rgba(212,175,55,0.35)] transition hover:brightness-110 hover:scale-[1.02]"
+                  className="inline-flex items-center justify-center rounded-full border border-[#D4AF37]/80 bg-gradient-to-r from-[#E5C158] via-[#D4AF37] to-[#A87C1F] px-8 py-4 text-base font-semibold text-[#0F0F0F] shadow-[0_10px_25px_rgba(212,175,55,0.35)] transition hover:brightness-105"
                 >
                   Agendar una cita
                 </Link>
 
-                <Link
-                  to="/login"
+                <a
+                  href="https://wa.me/573204365478"
+                  target="_blank"
+                  rel="noreferrer"
                   className="inline-flex items-center justify-center rounded-full border border-[#D4AF37]/30 bg-[#111111]/50 px-8 py-4 text-base font-medium text-[#F1E5C5] transition hover:border-[#E5C158] hover:text-white"
                 >
-                  Iniciar sesión
-                </Link>
+                  Escríbenos por WhatsApp
+                </a>
               </div>
             </div>
           </div>
         </div>
       </div>
+      <PublicReviews />
     </div>
   );
 }

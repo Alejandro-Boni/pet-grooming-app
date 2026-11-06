@@ -5,6 +5,7 @@ const LINKS = [
   { to: '/admin', label: 'Agenda del día', end: true },
   { to: '/admin/disponibilidad', label: 'Disponibilidad' },
   { to: '/admin/clientes', label: 'Historial de clientes' },
+  { to: '/admin/resenas', label: 'Reseñas' },
 ];
 
 export default function AdminLayout() {

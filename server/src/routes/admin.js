@@ -121,6 +121,94 @@ router.post('/appointments/:id/send-pickup-reminder', async (req, res) => {
   });
 });
 
+router.get('/reviews', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         r.id,
+         r.rating,
+         r.comment,
+         r.is_visible,
+         r.created_at,
+         a.appointment_date,
+         u.name AS customer_name,
+         p.name AS pet_name
+       FROM reviews r
+       JOIN appointments a ON a.id = r.appointment_id
+       JOIN users u ON u.id = r.customer_id
+       JOIN pets p ON p.id = a.pet_id
+       ORDER BY r.created_at DESC`
+    );
+
+    const summaryRes = await pool.query(
+      `SELECT
+         COALESCE(ROUND(AVG(rating)::numeric, 2), 0) AS average_rating,
+         COUNT(*) AS total_reviews
+       FROM reviews`
+    );
+
+    const summary = summaryRes.rows[0] || { average_rating: 0, total_reviews: 0 };
+
+    return res.json({
+      reviews: result.rows,
+      average_rating: Number(summary.average_rating || 0),
+      total_reviews: Number(summary.total_reviews || 0),
+    });
+  } catch (err) {
+    console.error('Error cargando reseñas del admin', err);
+    return res.status(500).json({
+      error: 'No se pudieron cargar las reseñas',
+    });
+  }
+});
+
+router.patch('/reviews/:id/visibility', async (req, res) => {
+  try {
+    const { visible } = req.body;
+    const result = await pool.query(
+      `UPDATE reviews
+       SET is_visible = $1
+       WHERE id = $2
+       RETURNING *`,
+      [Boolean(visible), req.params.id]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: 'Reseña no encontrada' });
+    }
+
+    return res.json({ review: result.rows[0] });
+  } catch (err) {
+    console.error('Error actualizando visibilidad de reseña', err);
+    return res.status(500).json({
+      error: 'No se pudo cambiar la visibilidad de la reseña',
+    });
+  }
+});
+
+router.delete('/reviews/:id', async (req, res) => {
+  const reviewId = Number(req.params.id);
+  if (!Number.isSafeInteger(reviewId) || reviewId < 1) {
+    return res.status(400).json({ error: 'La reseña indicada no es válida.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM reviews WHERE id = $1 RETURNING id',
+      [reviewId]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: 'Reseña no encontrada.' });
+    }
+
+    return res.json({ deleted: true, id: result.rows[0].id });
+  } catch (err) {
+    console.error('Error eliminando reseña', err);
+    return res.status(500).json({ error: 'No se pudo eliminar la reseña.' });
+  }
+});
+
 router.get('/clients/:clientId/history', async (req, res) => {
   const result = await pool.query(
     `SELECT a.*, p.name AS pet_name, s.name AS service_name, s.price_cop,

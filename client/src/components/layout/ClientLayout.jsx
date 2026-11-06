@@ -5,6 +5,7 @@ const TABS = [
   { to: '/app', label: 'Agendar', end: true },
   { to: '/app/mascotas', label: 'Mis mascotas' },
   { to: '/app/citas', label: 'Mis citas' },
+  { to: '/app/resenas', label: 'Reseñas' },
   { to: '/app/nosotros', label: 'Nosotros' },
 ];
 

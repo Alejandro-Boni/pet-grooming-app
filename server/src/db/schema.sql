@@ -79,9 +79,21 @@ CREATE TABLE IF NOT EXISTS appointments (
 ALTER TABLE appointments
   ADD COLUMN IF NOT EXISTS client_phone TEXT;
 
+CREATE TABLE IF NOT EXISTS reviews (
+  id SERIAL PRIMARY KEY,
+  appointment_id INTEGER NOT NULL UNIQUE REFERENCES appointments(id) ON DELETE CASCADE,
+  customer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT,
+  is_visible BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (appointment_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_client ON appointments (client_id);
 CREATE INDEX IF NOT EXISTS idx_pets_owner ON pets (owner_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_visible_created ON reviews (is_visible, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reviews_customer ON reviews (customer_id);
 
 INSERT INTO settings (key, value) VALUES ('max_concurrent_pets', '1')
   ON CONFLICT (key) DO NOTHING;
