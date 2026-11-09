@@ -89,7 +89,19 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS appointment_reminders (
+  id SERIAL PRIMARY KEY,
+  appointment_id INTEGER NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'sent',
+  sent_at TIMESTAMPTZ,
+  phone TEXT,
+  message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments (appointment_date);
+CREATE INDEX IF NOT EXISTS idx_reminders_appointment ON appointment_reminders (appointment_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_client ON appointments (client_id);
 CREATE INDEX IF NOT EXISTS idx_pets_owner ON pets (owner_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_visible_created ON reviews (is_visible, created_at DESC);

@@ -1,11 +1,32 @@
-const express = require('express');
+const { asyncRouter } = require('../utils/asyncRouter');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { buildWhatsAppLink } = require('../services/whatsapp');
 
-const router = express.Router();
+const router = asyncRouter();
 router.use(requireAuth, requireAdmin);
+
+const VALID_STATUSES = ['pending', 'in_progress', 'done', 'cancelled'];
+
+function parseId(value) {
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+// El registro del recordatorio es un historial: si falla, no debe impedir que el
+// administrador reciba el enlace de WhatsApp ni deshacer el cambio de estado.
+async function logReminder({ appointmentId, type, phone, message }) {
+  try {
+    await pool.query(
+      `INSERT INTO appointment_reminders (appointment_id, type, status, sent_at, phone, message)
+       VALUES ($1, $2, 'sent', NOW(), $3, $4)`,
+      [appointmentId, type, phone, message]
+    );
+  } catch (err) {
+    console.error('No se pudo registrar el recordatorio:', err.message);
+  }
+}
 
 router.get('/appointments', async (req, res) => {
   const { date } = req.query;
@@ -38,6 +59,17 @@ router.get('/appointments', async (req, res) => {
 
 router.patch('/appointments/:id', async (req, res) => {
   const { status, stylistNotes } = req.body;
+  const appointmentId = parseId(req.params.id);
+
+  if (!appointmentId) {
+    return res.status(400).json({ error: 'La cita indicada no es válida' });
+  }
+
+  if (status !== undefined && status !== null && !VALID_STATUSES.includes(status)) {
+    return res.status(400).json({
+      error: `Estado inválido. Usa uno de: ${VALID_STATUSES.join(', ')}`,
+    });
+  }
 
   const current = await pool.query(
     `SELECT a.*, u.phone, p.name AS pet_name,
@@ -46,7 +78,7 @@ router.patch('/appointments/:id', async (req, res) => {
      JOIN users u ON u.id = a.client_id
      JOIN pets p ON p.id = a.pet_id
      WHERE a.id = $1`,
-    [req.params.id]
+    [appointmentId]
   );
 
   if (!current.rows[0]) {
@@ -58,7 +90,7 @@ router.patch('/appointments/:id', async (req, res) => {
        status = COALESCE($1, status),
        stylist_notes = COALESCE($2, stylist_notes)
      WHERE id = $3 RETURNING *`,
-    [status || null, stylistNotes ?? null, req.params.id]
+    [status || null, stylistNotes ?? null, appointmentId]
   );
 
   if (!result.rows[0]) {
@@ -74,11 +106,7 @@ router.patch('/appointments/:id', async (req, res) => {
 
     whatsappLink = buildWhatsAppLink(phone, message);
 
-    await pool.query(
-      `INSERT INTO appointment_reminders (appointment_id, type, status, sent_at, phone, message)
-       VALUES ($1, $2, 'sent', NOW(), $3, $4)`,
-      [req.params.id, 'service_finished', phone, message]
-    );
+    await logReminder({ appointmentId, type: 'service_finished', phone, message });
   }
 
   res.json({
@@ -88,13 +116,18 @@ router.patch('/appointments/:id', async (req, res) => {
 });
 
 router.post('/appointments/:id/send-pickup-reminder', async (req, res) => {
+  const appointmentId = parseId(req.params.id);
+  if (!appointmentId) {
+    return res.status(400).json({ error: 'La cita indicada no es válida' });
+  }
+
   const appointmentRes = await pool.query(
     `SELECT a.*, u.phone,
             COALESCE(a.client_phone, u.phone) AS contact_phone
      FROM appointments a
      JOIN users u ON u.id = a.client_id
      WHERE a.id = $1`,
-    [req.params.id]
+    [appointmentId]
   );
 
   const appointment = appointmentRes.rows[0];
@@ -108,11 +141,7 @@ router.post('/appointments/:id/send-pickup-reminder', async (req, res) => {
 
   const whatsappLink = buildWhatsAppLink(phone, message);
 
-  await pool.query(
-    `INSERT INTO appointment_reminders (appointment_id, type, status, sent_at, phone, message)
-     VALUES ($1, $2, 'sent', NOW(), $3, $4)`,
-    [appointment.id, 'pickup_ready', phone, message]
-  );
+  await logReminder({ appointmentId: appointment.id, type: 'pickup_ready', phone, message });
 
   res.json({
     ok: true,

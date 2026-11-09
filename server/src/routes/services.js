@@ -1,10 +1,10 @@
-const express = require('express');
+const { asyncRouter } = require('../utils/asyncRouter');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { calculateServicePrice } = require('../utils/pricing');
 const { isServiceAvailableForPet } = require('../utils/service-rules');
 
-const router = express.Router();
+const router = asyncRouter();
 
 router.get('/', requireAuth, async (req, res) => {
   const result = await pool.query('SELECT * FROM services WHERE active = true ORDER BY id');

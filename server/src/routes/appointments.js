@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
-const { calculateDurationMinutes } = require('../utils/duration');
+const { calculateDurationMinutes, SLOT_GRANULARITY_MINUTES } = require('../utils/duration');
 const {
   timeToMinutes,
   minutesToTime,
@@ -38,6 +38,21 @@ function hasAppointmentPassed({ appointment_date, end_time }) {
     appointmentDate < today ||
     (appointmentDate === today && appointmentEndMinutes <= nowMinutes)
   );
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+function isValidDate(value) {
+  if (typeof value !== 'string' || !DATE_RE.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+// 0 = domingo ... 6 = sábado (misma convención que business_hours.day_of_week).
+// Se calcula en UTC para no depender de la zona horaria del servidor.
+function dayOfWeekOf(date) {
+  return new Date(`${date}T00:00:00Z`).getUTCDay();
 }
 
 function isValidPhone(phone) {
@@ -78,6 +93,14 @@ router.post('/', async (req, res) => {
     return res.status(400).json({
       error: 'Ingresa un número de celular válido para poder agendar.',
     });
+  }
+
+  if (!isValidDate(date)) {
+    return res.status(400).json({ error: 'La fecha no es válida (usa AAAA-MM-DD).' });
+  }
+
+  if (typeof startTime !== 'string' || !TIME_RE.test(startTime)) {
+    return res.status(400).json({ error: 'La hora no es válida (usa HH:MM).' });
   }
 
   const startMin = timeToMinutes(startTime);
@@ -136,6 +159,32 @@ router.post('/', async (req, res) => {
     );
     const endMin = startMin + durationMinutes;
     const endTime = minutesToTime(endMin);
+
+    // El frontend solo ofrece horarios válidos, pero la API debe hacerlos cumplir:
+    // día abierto, dentro de apertura/cierre y alineado a la grilla de 15 minutos.
+    const hoursRes = await client.query(
+      'SELECT is_closed, open_time, close_time FROM business_hours WHERE day_of_week = $1',
+      [dayOfWeekOf(date)]
+    );
+    const hours = hoursRes.rows[0];
+
+    if (!hours || hours.is_closed || !hours.open_time || !hours.close_time) {
+      return res.status(409).json({ error: 'Ese día no hay atención. Elige otro día.' });
+    }
+
+    const openMin = timeToMinutes(hours.open_time);
+    const closeMin = timeToMinutes(hours.close_time);
+
+    if (startMin < openMin || endMin > closeMin) {
+      return res.status(409).json({
+        error: 'Ese horario queda fuera del horario de atención. Elige otro.',
+      });
+    }
+
+    if ((startMin - openMin) % SLOT_GRANULARITY_MINUTES !== 0) {
+      return res.status(400).json({ error: 'La hora no coincide con los horarios disponibles.' });
+    }
+
     const candidateCoord = { lat: Number(lat), lng: Number(lng) };
 
     await client.query('BEGIN');
