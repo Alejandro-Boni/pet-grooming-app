@@ -5,6 +5,10 @@
 
 const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
 
+// Si TomTom no responde a tiempo, se aborta y quien llama decide qué hacer (normalmente usar
+// el buffer conservador). Sin esto, un TomTom lento deja colgada la reserva.
+const TOMTOM_TIMEOUT_MS = Number(process.env.TOMTOM_TIMEOUT_MS) || 4000;
+
 function assertApiKey() {
   if (!TOMTOM_API_KEY) {
     throw new Error('Falta configurar TOMTOM_API_KEY en las variables de entorno del servidor');
@@ -22,7 +26,15 @@ async function getTravelMinutes(from, to, departAt) {
     `https://api.tomtom.com/routing/1/calculateRoute/${from.lat},${from.lng}:${to.lat},${to.lng}/json` +
     `?key=${TOMTOM_API_KEY}&traffic=true&departAt=${encodeURIComponent(departAt)}`;
 
-  const res = await fetch(url);
+  let res;
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(TOMTOM_TIMEOUT_MS) });
+  } catch (err) {
+    if (err.name === 'TimeoutError') {
+      throw new Error(`TomTom no respondió en ${TOMTOM_TIMEOUT_MS} ms`);
+    }
+    throw err;
+  }
   if (!res.ok) throw new Error(`TomTom routing respondió ${res.status}`);
   const data = await res.json();
 

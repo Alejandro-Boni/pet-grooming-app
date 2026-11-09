@@ -5,6 +5,7 @@
 // Requiere Node 18+ (usa el fetch nativo, sin dependencias extra).
 
 const LOCATIONIQ_API_KEY = process.env.LOCATIONIQ_API_KEY;
+const LOCATIONIQ_TIMEOUT_MS = Number(process.env.LOCATIONIQ_TIMEOUT_MS) || 5000;
 
 function assertApiKey() {
   if (!LOCATIONIQ_API_KEY) {
@@ -23,7 +24,15 @@ async function geocodeAddress(address) {
     `https://us1.locationiq.com/v1/search?key=${LOCATIONIQ_API_KEY}` +
     `&q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=co`;
 
-  const res = await fetch(url);
+  let res;
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(LOCATIONIQ_TIMEOUT_MS) });
+  } catch (err) {
+    if (err.name === 'TimeoutError') {
+      throw new Error('El servicio de direcciones tardó demasiado. Intenta de nuevo.');
+    }
+    throw err;
+  }
   if (!res.ok) throw new Error(`LocationIQ geocode respondió ${res.status}`);
   const data = await res.json();
 

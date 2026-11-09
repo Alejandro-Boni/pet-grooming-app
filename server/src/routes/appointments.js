@@ -8,9 +8,10 @@ const {
   rangesOverlap,
   toIsoDepartAt,
   nowInBogota,
-  FALLBACK_TRAVEL_MINUTES,
+  toSortedAppointments,
+  findNeighbors,
+  travelMinutesOrFallback,
 } = require('../utils/slots');
-const { getTravelMinutes } = require('../utils/tomtom');
 const { calculateServicePrice } = require('../utils/pricing');
 const { isServiceAvailableForPet } = require('../utils/service-rules');
 
@@ -187,6 +188,45 @@ router.post('/', async (req, res) => {
 
     const candidateCoord = { lat: Number(lat), lng: Number(lng) };
 
+    // Los traslados (llamadas HTTP a TomTom) se calculan ANTES de tomar el lock, con una lectura
+    // sin bloqueo de las citas del día. Dentro del lock solo se verifica que las vecinas sigan
+    // siendo las mismas; así un TomTom lento no bloquea a los demás clientes de esa fecha.
+    const travelMinutes = { previous: new Map(), next: new Map() };
+
+    async function loadTravel(direction, neighbor) {
+      const neighborCoord = { lat: neighbor.lat, lng: neighbor.lng };
+      const minutes =
+        direction === 'previous'
+          ? await travelMinutesOrFallback(
+              neighborCoord,
+              candidateCoord,
+              toIsoDepartAt(date, neighbor.endTimeStr),
+              'cita anterior → nueva'
+            )
+          : await travelMinutesOrFallback(
+              candidateCoord,
+              neighborCoord,
+              toIsoDepartAt(date, neighbor.startTimeStr),
+              'nueva → cita siguiente'
+            );
+      travelMinutes[direction].set(neighbor.id, minutes);
+      return minutes;
+    }
+
+    const preRes = await client.query(
+      `SELECT id, start_time, end_time, lat, lng
+       FROM appointments
+       WHERE appointment_date = $1
+         AND status != 'cancelled'`,
+      [date]
+    );
+    const preNeighbors = findNeighbors(toSortedAppointments(preRes.rows), startMin, endMin);
+
+    await Promise.all([
+      preNeighbors.previous && loadTravel('previous', preNeighbors.previous),
+      preNeighbors.next && loadTravel('next', preNeighbors.next),
+    ]);
+
     await client.query('BEGIN');
     transactionStarted = true;
 
@@ -231,17 +271,7 @@ router.post('/', async (req, res) => {
       [date]
     );
 
-    const existingAppointments = existingRes.rows
-      .map((appointment) => ({
-        id: appointment.id,
-        start: timeToMinutes(appointment.start_time),
-        end: timeToMinutes(appointment.end_time),
-        startTimeStr: appointment.start_time,
-        endTimeStr: appointment.end_time,
-        lat: appointment.lat,
-        lng: appointment.lng,
-      }))
-      .sort((a, b) => a.start - b.start);
+    const existingAppointments = toSortedAppointments(existingRes.rows);
 
     const overlapping = existingAppointments.filter((appointment) =>
       rangesOverlap(startMin, endMin, appointment.start, appointment.end)
@@ -255,19 +285,13 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const previous = [...existingAppointments]
-      .reverse()
-      .find((appointment) => appointment.end <= startMin);
-    const next = existingAppointments.find(
-      (appointment) => appointment.start >= endMin
-    );
+    const { previous, next } = findNeighbors(existingAppointments, startMin, endMin);
 
     if (previous) {
-      const needed = await getTravelMinutes(
-        { lat: previous.lat, lng: previous.lng },
-        candidateCoord,
-        toIsoDepartAt(date, previous.endTimeStr)
-      ).catch(() => FALLBACK_TRAVEL_MINUTES);
+      // Caso normal: ya está calculado. Solo si otro cliente reservó justo en medio y la vecina
+      // cambió, se consulta aquí (con timeout), manteniendo el lock el menor tiempo posible.
+      const needed =
+        travelMinutes.previous.get(previous.id) ?? (await loadTravel('previous', previous));
 
       if (startMin - previous.end < needed) {
         await client.query('ROLLBACK');
@@ -280,11 +304,7 @@ router.post('/', async (req, res) => {
     }
 
     if (next) {
-      const needed = await getTravelMinutes(
-        candidateCoord,
-        { lat: next.lat, lng: next.lng },
-        toIsoDepartAt(date, next.startTimeStr)
-      ).catch(() => FALLBACK_TRAVEL_MINUTES);
+      const needed = travelMinutes.next.get(next.id) ?? (await loadTravel('next', next));
 
       if (next.start - endMin < needed) {
         await client.query('ROLLBACK');

@@ -41,6 +41,41 @@ function nowInBogota() {
   };
 }
 
+function toSortedAppointments(rows) {
+  return rows
+    .map((a) => ({
+      id: a.id,
+      start: timeToMinutes(a.start_time),
+      end: timeToMinutes(a.end_time),
+      startTimeStr: a.start_time,
+      endTimeStr: a.end_time,
+      lat: a.lat,
+      lng: a.lng,
+    }))
+    .sort((a, b) => a.start - b.start);
+}
+
+// Cita vecina anterior (termina antes o justo cuando empieza la candidata) y siguiente.
+function findNeighbors(sortedAppointments, candidateStart, candidateEnd) {
+  const previous = [...sortedAppointments].reverse().find((a) => a.end <= candidateStart) || null;
+  const next = sortedAppointments.find((a) => a.start >= candidateEnd) || null;
+  return { previous, next };
+}
+
+// Tiempo de traslado con tráfico; si TomTom falla o tarda, usa el buffer conservador y deja
+// constancia en el log (antes el fallo de la reserva era silencioso).
+async function travelMinutesOrFallback(from, to, departAt, label) {
+  try {
+    return await getTravelMinutes(from, to, departAt);
+  } catch (err) {
+    console.error(
+      `TomTom (${label}) falló, usando buffer conservador de ${FALLBACK_TRAVEL_MINUTES} min:`,
+      err.message
+    );
+    return FALLBACK_TRAVEL_MINUTES;
+  }
+}
+
 async function buildTravelCache({ date, candidateCoord, existingAppts }) {
   const cache = new Map();
 
@@ -162,6 +197,9 @@ module.exports = {
   getAvailableSlots,
   hasTravelBuffer,
   buildTravelCache,
+  toSortedAppointments,
+  findNeighbors,
+  travelMinutesOrFallback,
   toIsoDepartAt,
   nowInBogota,
   FALLBACK_TRAVEL_MINUTES,
