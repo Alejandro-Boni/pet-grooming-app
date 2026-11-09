@@ -1,8 +1,8 @@
-const express = require('express');
+const { asyncRouter } = require('../utils/asyncRouter');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 
-const router = express.Router();
+const router = asyncRouter();
 router.use(requireAuth);
 
 // Listar las mascotas del cliente autenticado
