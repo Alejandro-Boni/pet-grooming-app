@@ -14,32 +14,13 @@ const {
 } = require('../utils/slots');
 const { calculateServicePrice } = require('../utils/pricing');
 const { isServiceAvailableForPet } = require('../utils/service-rules');
+const { canCancelAppointment, hasAppointmentPassed } = require('../utils/appointment-rules');
+const { splitBlocks } = require('../utils/blackouts');
+const { parseId } = require('../utils/ids');
+const { validateCoords } = require('../utils/validation');
 
 const router = express.Router();
 router.use(requireAuth);
-
-function canCancelAppointment({ appointment_date, start_time }) {
-  const appointmentStart = new Date(
-    `${appointment_date}T${String(start_time).slice(0, 5)}:00-05:00`
-  ).getTime();
-
-  const cancellationWindowMs = 4 * 60 * 60 * 1000;
-  return Date.now() + cancellationWindowMs <= appointmentStart;
-}
-
-function hasAppointmentPassed({ appointment_date, end_time }) {
-  const { date: today, minutes: nowMinutes } = nowInBogota();
-  const appointmentDate =
-    appointment_date instanceof Date
-      ? appointment_date.toISOString().slice(0, 10)
-      : appointment_date;
-  const appointmentEndMinutes = timeToMinutes(end_time);
-
-  return (
-    appointmentDate < today ||
-    (appointmentDate === today && appointmentEndMinutes <= nowMinutes)
-  );
-}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -57,14 +38,17 @@ function dayOfWeekOf(date) {
 }
 
 function isValidPhone(phone) {
-  const digits = String(phone || '').replace(/\D/g, '');
-  return digits.length >= 7 && digits.length <= 15;
+  const text = String(phone || '').trim();
+  const digits = text.replace(/\D/g, '');
+  // client_phone y appointment_reminders.phone son VARCHAR(20): un texto más largo
+  // (aunque tenga 7–15 dígitos) fallaría al guardar con un error 500.
+  return text.length <= 20 && digits.length >= 7 && digits.length <= 15;
 }
 
 router.post('/', async (req, res) => {
   const {
-    petId,
-    serviceId,
+    petId: rawPetId,
+    serviceId: rawServiceId,
     date,
     startTime,
     address,
@@ -74,8 +58,8 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   if (
-    !petId ||
-    !serviceId ||
+    !rawPetId ||
+    !rawServiceId ||
     !date ||
     !startTime ||
     !address ||
@@ -86,6 +70,17 @@ router.post('/', async (req, res) => {
       error:
         'petId, serviceId, date, startTime, address, lat y lng son requeridos',
     });
+  }
+
+  const petId = parseId(rawPetId);
+  const serviceId = parseId(rawServiceId);
+  if (!petId || !serviceId) {
+    return res.status(400).json({ error: 'La mascota o el servicio indicados no son válidos' });
+  }
+
+  const coords = validateCoords(lat, lng);
+  if (coords.error) {
+    return res.status(400).json({ error: coords.error });
   }
 
   const phone = String(clientPhone || '').trim();
@@ -124,7 +119,7 @@ router.post('/', async (req, res) => {
 
   try {
     const petRes = await client.query(
-      'SELECT * FROM pets WHERE id = $1 AND owner_id = $2',
+      'SELECT * FROM pets WHERE id = $1 AND owner_id = $2 AND deleted_at IS NULL',
       [petId, req.user.id]
     );
     const pet = petRes.rows[0];
@@ -156,7 +151,8 @@ router.post('/', async (req, res) => {
     );
     const durationMinutes = calculateDurationMinutes(
       service.base_duration_minutes,
-      pet.size
+      pet.size,
+      service.name
     );
     const endMin = startMin + durationMinutes;
     const endTime = minutesToTime(endMin);
@@ -186,7 +182,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'La hora no coincide con los horarios disponibles.' });
     }
 
-    const candidateCoord = { lat: Number(lat), lng: Number(lng) };
+    const candidateCoord = { lat: coords.value.lat, lng: coords.value.lng };
 
     // Los traslados (llamadas HTTP a TomTom) se calculan ANTES de tomar el lock, con una lectura
     // sin bloqueo de las citas del día. Dentro del lock solo se verifica que las vecinas sigan
@@ -242,16 +238,9 @@ router.post('/', async (req, res) => {
       [date]
     );
 
-    const wholeDayBlocked = blockRes.rows.some((block) => block.start_time === null);
-    const hitsBlock = blockRes.rows.some(
-      (block) =>
-        block.start_time !== null &&
-        rangesOverlap(
-          startMin,
-          endMin,
-          timeToMinutes(block.start_time),
-          timeToMinutes(block.end_time)
-        )
+    const { wholeDay: wholeDayBlocked, ranges: blockedRanges } = splitBlocks(blockRes.rows);
+    const hitsBlock = blockedRanges.some((block) =>
+      rangesOverlap(startMin, endMin, block.start, block.end)
     );
 
     if (wholeDayBlocked || hitsBlock) {
@@ -337,8 +326,8 @@ router.post('/', async (req, res) => {
         petId,
         serviceId,
         address,
-        lat,
-        lng,
+        coords.value.lat,
+        coords.value.lng,
         date,
         startTime,
         endTime,
@@ -464,12 +453,17 @@ router.post('/reviews', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
+  const appointmentId = parseId(req.params.id);
+  if (!appointmentId) {
+    return res.status(400).json({ error: 'La cita indicada no es válida' });
+  }
+
   try {
     const appointmentRes = await pool.query(
       `SELECT *
        FROM appointments
        WHERE id = $1 AND client_id = $2`,
-      [req.params.id, req.user.id]
+      [appointmentId, req.user.id]
     );
 
     const appointment = appointmentRes.rows[0];
@@ -501,7 +495,7 @@ router.delete('/:id', async (req, res) => {
        SET status = 'cancelled'
        WHERE id = $1 AND client_id = $2
        RETURNING *`,
-      [req.params.id, req.user.id]
+      [appointmentId, req.user.id]
     );
 
     return res.json({ appointment: result.rows[0] });

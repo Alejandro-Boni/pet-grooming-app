@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { buildCorsOptions } = require('./utils/cors-options');
 
 const authRoutes = require('./routes/auth');
 const petRoutes = require('./routes/pets');
@@ -12,7 +13,13 @@ const geocodeRoutes = require('./routes/geocode');
 const reviewRoutes = require('./routes/reviews');
 
 const app = express();
-app.use(cors());
+const corsConfig = buildCorsOptions(process.env.CLIENT_ORIGIN);
+if (corsConfig.restricted) {
+  console.log(`CORS restringido a: ${corsConfig.allowed.join(', ')}`);
+} else {
+  console.warn('CLIENT_ORIGIN no está definido: CORS permite cualquier origen. Defínelo en producción.');
+}
+app.use(cors(corsConfig.options));
 app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));

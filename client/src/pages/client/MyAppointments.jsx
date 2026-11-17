@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
+import { formatTime } from '../../utils/format';
 
 const STAR_ICONS = ['★', '★', '★', '★', '★'];
 
@@ -140,7 +141,7 @@ export default function MyAppointments() {
                     {appointment.pet_name}
                   </h2>
                   <p className="mt-1 text-sm text-[#F1E5C5]">
-                    {appointment.appointment_date} · {appointment.start_time} - {appointment.end_time}
+                    {appointment.appointment_date} · {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}
                   </p>
                 </div>
 

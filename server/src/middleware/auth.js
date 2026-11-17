@@ -16,23 +16,37 @@ if (!admin.apps.length) {
  * Adjunta req.user = { id, role, firebaseUid, email, phone }.
  */
 async function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Falta el token de autenticación' });
+
+  // Solo un token inválido o vencido es un 401. Un fallo de base de datos es un 500
+  // (antes se reportaba como "Token inválido" y confundía el diagnóstico).
+  let decoded;
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) return res.status(401).json({ error: 'Falta el token de autenticación' });
+    decoded = await admin.auth().verifyIdToken(token);
+  } catch (err) {
+    console.error('Error verificando token', err);
+    return res.status(401).json({ error: 'Token inválido o expirado' });
+  }
 
-    const decoded = await admin.auth().verifyIdToken(token);
-
-    const existing = await pool.query('SELECT * FROM users WHERE firebase_uid = $1', [decoded.uid]);
-    let user = existing.rows[0];
+  try {
+    let user = (await pool.query('SELECT * FROM users WHERE firebase_uid = $1', [decoded.uid])).rows[0];
 
     if (!user) {
+      // En el primer login llegan varias peticiones casi a la vez (/auth/me, /pets, ...).
+      // ON CONFLICT DO NOTHING evita que la segunda falle contra el UNIQUE de firebase_uid;
+      // si otra petición ganó la carrera, simplemente leemos la fila que ya creó.
       const inserted = await pool.query(
         `INSERT INTO users (firebase_uid, name, email, phone, role)
-         VALUES ($1, $2, $3, $4, 'client') RETURNING *`,
+         VALUES ($1, $2, $3, $4, 'client')
+         ON CONFLICT (firebase_uid) DO NOTHING
+         RETURNING *`,
         [decoded.uid, decoded.name || null, decoded.email || null, decoded.phone_number || null]
       );
-      user = inserted.rows[0];
+      user =
+        inserted.rows[0] ||
+        (await pool.query('SELECT * FROM users WHERE firebase_uid = $1', [decoded.uid])).rows[0];
     }
 
     req.user = {
@@ -45,8 +59,7 @@ async function requireAuth(req, res, next) {
     };
     next();
   } catch (err) {
-    console.error('Error verificando token', err);
-    res.status(401).json({ error: 'Token inválido o expirado' });
+    next(err);
   }
 }
 

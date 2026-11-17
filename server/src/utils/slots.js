@@ -1,45 +1,16 @@
 const pool = require('../db/pool');
 const { calculateDurationMinutes, SLOT_GRANULARITY_MINUTES } = require('./duration');
 const { getTravelMinutes } = require('./tomtom');
+const {
+  timeToMinutes,
+  minutesToTime,
+  rangesOverlap,
+  toIsoDepartAt,
+  nowInBogota,
+} = require('./time');
+const { splitBlocks } = require('./blackouts');
 
 const FALLBACK_TRAVEL_MINUTES = 60;
-
-function timeToMinutes(t) {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
-}
-
-function minutesToTime(mins) {
-  const h = Math.floor(mins / 60).toString().padStart(2, '0');
-  const m = (mins % 60).toString().padStart(2, '0');
-  return `${h}:${m}`;
-}
-
-function rangesOverlap(aStart, aEnd, bStart, bEnd) {
-  return aStart < bEnd && bStart < aEnd;
-}
-
-function toIsoDepartAt(date, timeStr) {
-  return `${date}T${timeStr.length === 5 ? timeStr + ':00' : timeStr}`;
-}
-
-/**
- * Fecha y hora actuales en Bogotá (UTC-5), sin importar el huso horario del servidor
- * (Render corre en UTC). Evita ofrecer o permitir agendar horas que ya pasaron hoy.
- */
-function nowInBogota() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Bogota',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false,
-  }).formatToParts(new Date());
-  const get = (type) => parts.find((p) => p.type === type).value;
-
-  return {
-    date: `${get('year')}-${get('month')}-${get('day')}`,
-    minutes: Number(get('hour')) * 60 + Number(get('minute')),
-  };
-}
 
 function toSortedAppointments(rows) {
   return rows
@@ -132,21 +103,17 @@ async function getAvailableSlots({ date, serviceId, petSize, lat, lng }) {
   const service = serviceRes.rows[0];
   if (!hours || hours.is_closed || !service) return { slots: [], durationMinutes: 0 };
 
-  const wholeDayBlocked = blocksRes.rows.some((b) => b.start_time === null);
+  const { wholeDay: wholeDayBlocked, ranges: blockedRanges } = splitBlocks(blocksRes.rows);
   if (wholeDayBlocked) return { slots: [], durationMinutes: 0 };
 
   const maxConcurrent = parseInt(settingsRes.rows[0]?.value ?? '1', 10);
-  const durationMinutes = calculateDurationMinutes(service.base_duration_minutes, petSize);
+  const durationMinutes = calculateDurationMinutes(service.base_duration_minutes, petSize, service.name);
 
   const openMin = timeToMinutes(hours.open_time);
   const closeMin = timeToMinutes(hours.close_time);
 
   const { date: todayBogota, minutes: nowMinutesBogota } = nowInBogota();
   const isToday = date === todayBogota;
-
-  const blockedRanges = blocksRes.rows
-    .filter((b) => b.start_time !== null)
-    .map((b) => ({ start: timeToMinutes(b.start_time), end: timeToMinutes(b.end_time) }));
 
   const existingAppts = apptsRes.rows
     .map((a) => ({

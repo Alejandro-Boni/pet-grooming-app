@@ -22,4 +22,10 @@ function hasSizeSpecificPrice(serviceName) {
   return DOG_SIZE_IN_SERVICE_NAME.test(serviceName) || CAT_SERVICE.test(serviceName);
 }
 
-module.exports = { isServiceAvailableForPet, hasSizeSpecificPrice };
+// Servicios cuyo nombre ya fija el tamaño del perro ("Baño perro grande"): su duración base
+// ya está pensada para ese tamaño, así que no se le vuelve a aplicar el multiplicador.
+function isDogSizeNamedService(serviceName) {
+  return DOG_SIZE_IN_SERVICE_NAME.test(serviceName || '');
+}
+
+module.exports = { isServiceAvailableForPet, hasSizeSpecificPrice, isDogSizeNamedService };

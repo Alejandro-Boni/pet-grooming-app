@@ -4,6 +4,7 @@ const PET_SIZE_PRICE_MULTIPLIER = {
   pequeño: 1,
   mediano: 1.2,
   grande: 1.5,
+  gigante: 1.5, // igual que 'grande' hasta definir la tarifa real
 };
 
 function calculateServicePrice(basePriceCop, petSize, serviceName) {

@@ -3,16 +3,14 @@ const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { buildWhatsAppLink } = require('../services/whatsapp');
+const { validateBlackout } = require('../utils/blackouts');
+const { parseId } = require('../utils/ids');
+const { validateSetting } = require('../utils/validation');
 
 const router = asyncRouter();
 router.use(requireAuth, requireAdmin);
 
 const VALID_STATUSES = ['pending', 'in_progress', 'done', 'cancelled'];
-
-function parseId(value) {
-  const id = Number(value);
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
 
 // El registro del recordatorio es un historial: si falla, no debe impedir que el
 // administrador reciba el enlace de WhatsApp ni deshacer el cambio de estado.
@@ -192,6 +190,11 @@ router.get('/reviews', async (req, res) => {
 });
 
 router.patch('/reviews/:id/visibility', async (req, res) => {
+  const reviewId = parseId(req.params.id);
+  if (!reviewId) {
+    return res.status(400).json({ error: 'La reseña indicada no es válida.' });
+  }
+
   try {
     const { visible } = req.body;
     const result = await pool.query(
@@ -199,7 +202,7 @@ router.patch('/reviews/:id/visibility', async (req, res) => {
        SET is_visible = $1
        WHERE id = $2
        RETURNING *`,
-      [Boolean(visible), req.params.id]
+      [Boolean(visible), reviewId]
     );
 
     if (!result.rows[0]) {
@@ -216,8 +219,8 @@ router.patch('/reviews/:id/visibility', async (req, res) => {
 });
 
 router.delete('/reviews/:id', async (req, res) => {
-  const reviewId = Number(req.params.id);
-  if (!Number.isSafeInteger(reviewId) || reviewId < 1) {
+  const reviewId = parseId(req.params.id);
+  if (!reviewId) {
     return res.status(400).json({ error: 'La reseña indicada no es válida.' });
   }
 
@@ -239,6 +242,11 @@ router.delete('/reviews/:id', async (req, res) => {
 });
 
 router.get('/clients/:clientId/history', async (req, res) => {
+  const clientId = parseId(req.params.clientId);
+  if (!clientId) {
+    return res.status(400).json({ error: 'El cliente indicado no es válido.' });
+  }
+
   const result = await pool.query(
     `SELECT a.*, p.name AS pet_name, s.name AS service_name, s.price_cop,
             CASE
@@ -252,7 +260,7 @@ router.get('/clients/:clientId/history', async (req, res) => {
      JOIN services s ON s.id = a.service_id
      WHERE a.client_id = $1
      ORDER BY a.appointment_date DESC, a.start_time DESC`,
-    [req.params.clientId]
+    [clientId]
   );
   res.json({ appointments: result.rows });
 });
@@ -274,17 +282,24 @@ router.get('/blackouts', async (req, res) => {
 });
 
 router.post('/blackouts', async (req, res) => {
-  const { date, startTime, endTime, reason } = req.body;
+  const { error, value } = validateBlackout(req.body);
+  if (error) return res.status(400).json({ error });
+
   const result = await pool.query(
     `INSERT INTO availability_blocks (block_date, start_time, end_time, reason)
      VALUES ($1,$2,$3,$4) RETURNING *`,
-    [date, startTime || null, endTime || null, reason || null]
+    [value.date, value.startTime, value.endTime, value.reason]
   );
   res.status(201).json({ blackout: result.rows[0] });
 });
 
 router.delete('/blackouts/:id', async (req, res) => {
-  await pool.query('DELETE FROM availability_blocks WHERE id = $1', [req.params.id]);
+  const blackoutId = parseId(req.params.id);
+  if (!blackoutId) {
+    return res.status(400).json({ error: 'El bloqueo indicado no es válido.' });
+  }
+
+  await pool.query('DELETE FROM availability_blocks WHERE id = $1', [blackoutId]);
   res.status(204).end();
 });
 
@@ -294,11 +309,13 @@ router.get('/settings', async (req, res) => {
 });
 
 router.put('/settings/:key', async (req, res) => {
-  const { value } = req.body;
+  const { error, value } = validateSetting(req.params.key, req.body?.value);
+  if (error) return res.status(400).json({ error });
+
   const result = await pool.query(
     `INSERT INTO settings (key, value) VALUES ($1, $2)
      ON CONFLICT (key) DO UPDATE SET value = $2 RETURNING *`,
-    [req.params.key, String(value)]
+    [req.params.key, value]
   );
   res.json({ setting: result.rows[0] });
 });

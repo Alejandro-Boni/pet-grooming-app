@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import StepIndicator from '../../components/StepIndicator';
 import PetCard from '../../components/PetCard';
 import AddressInput from '../../components/AddressInput';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
-import { formatPrice } from '../../utils/format';
+import { formatPrice, formatDate, formatTime } from '../../utils/format';
 
 const STEPS = ['Mascota', 'Servicio', 'Dirección y horario', 'Confirmación'];
 
@@ -16,6 +17,7 @@ function isValidPhone(phone) {
 export default function BookingFlow() {
   const [step, setStep] = useState(1);
   const [pets, setPets] = useState([]);
+  const [petsError, setPetsError] = useState(null);
   const [services, setServices] = useState([]);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState(null);
@@ -38,7 +40,10 @@ export default function BookingFlow() {
           : false;
 
   useEffect(() => {
-    api.get('/api/pets').then((data) => setPets(data.pets));
+    api
+      .get('/api/pets')
+      .then((data) => setPets(data.pets))
+      .catch((err) => setPetsError(err.message || 'No se pudieron cargar tus mascotas.'));
   }, []);
 
   useEffect(() => {
@@ -99,6 +104,17 @@ export default function BookingFlow() {
 
   const finalPrice = selectedService?.final_price_cop ?? selectedService?.price_cop ?? 0;
 
+  function resetBooking() {
+    setStep(1);
+    setSelectedPet(null);
+    setSelectedService(null);
+    setLocation(null);
+    setSelectedSlot(null);
+    setPhone('');
+    setBookingError(null);
+    setConfirmedAppointment(null);
+  }
+
   if (confirmedAppointment) {
     return (
       <div className="min-h-screen bg-[#0F0F0F] px-4 py-6 text-white">
@@ -112,6 +128,17 @@ export default function BookingFlow() {
               <p className="mt-5 text-sm uppercase tracking-[0.2em] text-[#E5C158]">Servicio</p>
               <p className="mt-2 text-lg text-[#F1E5C5]">{selectedService.name}</p>
 
+              <p className="mt-5 text-sm uppercase tracking-[0.2em] text-[#E5C158]">Fecha y hora</p>
+              <p className="mt-2 text-lg capitalize text-[#F1E5C5]">
+                {formatDate(confirmedAppointment.appointment_date || selectedSlot?.date)}
+                {' · '}
+                {formatTime(confirmedAppointment.start_time || selectedSlot?.time)}
+                {confirmedAppointment.end_time ? ` – ${formatTime(confirmedAppointment.end_time)}` : ''}
+              </p>
+
+              <p className="mt-5 text-sm uppercase tracking-[0.2em] text-[#E5C158]">Dirección</p>
+              <p className="mt-2 text-lg text-[#F1E5C5]">{confirmedAppointment.address || location?.address}</p>
+
               <p className="mt-5 text-sm uppercase tracking-[0.2em] text-[#E5C158]">Celular</p>
               <p className="mt-2 text-lg text-[#F1E5C5]">{phone}</p>
 
@@ -119,6 +146,22 @@ export default function BookingFlow() {
               <p className="mt-2 text-lg font-semibold text-[#E5C158]">
                 {formatPrice(Number(finalPrice))}
               </p>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link
+                to="/app/citas"
+                className="rounded-full bg-[#D4AF37] px-4 py-3 text-center font-semibold text-[#0F0F0F]"
+              >
+                Ver mis citas
+              </Link>
+              <button
+                type="button"
+                onClick={resetBooking}
+                className="rounded-full border border-[#D4AF37]/40 px-4 py-3 text-center text-white"
+              >
+                Agendar otra cita
+              </button>
             </div>
           </div>
         </div>
@@ -133,6 +176,11 @@ export default function BookingFlow() {
 
         {step === 1 && (
           <div className="mt-6 space-y-4">
+            {petsError && (
+              <p className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+                {petsError}
+              </p>
+            )}
             {pets.map((pet) => (
               <PetCard
                 key={pet.id}

@@ -52,16 +52,35 @@ pet-grooming-app/
 3. Pégala en `server/.env` como `TOMTOM_API_KEY`.
 4. Con el plan gratuito tienes 2,500 solicitudes/día entre geocodificación y cálculo de rutas —
    de sobra para un negocio pequeño. Puedes monitorear el consumo desde el mismo dashboard.
+5. La geocodificación de direcciones usa **LocationIQ**: define también `LOCATIONIQ_API_KEY` en
+   `server/.env`.
+
+### Caché y límites para cuidar la cuota
+
+- **Traslados (TomTom):** cada trayecto se consulta una sola vez por hora de salida y se guarda en
+  memoria (30 min para hoy, 6 h para otros días). Máximo 3 llamadas simultáneas y timeout de 4 s
+  (`TOMTOM_TIMEOUT_MS`);
+  si TomTom no responde se usa el buffer conservador de 60 min. Las reservas piden los traslados
+  *antes* de tomar el lock de la fecha, así una demora de TomTom no bloquea a otros clientes.
+- **Direcciones (LocationIQ):** cada dirección ya resuelta se guarda 24 h; timeout de 5 s
+  (`LOCATIONIQ_TIMEOUT_MS`).
+- **Límite por usuario y por minuto:** 30 consultas de horarios y 10 búsquedas de dirección.
+- Las cachés viven en la memoria del servidor: se vacían al reiniciarlo. Cada llamada real a
+  TomTom deja una línea `[tomtom] llamada real #N …` en los logs para vigilar el consumo.
 
 ## 4. Poner el proyecto a correr en local
 
 ### Backend
 
+Requiere **Node.js 22** (versión LTS; `server/package.json` fija `engines.node` en `22.x`).
+
 ```bash
 cd server
-cp .env.example .env      # completa DATABASE_URL, FIREBASE_SERVICE_ACCOUNT y TOMTOM_API_KEY
+cp .env.example .env      # completa DATABASE_URL, FIREBASE_SERVICE_ACCOUNT, TOMTOM_API_KEY,
+                          # LOCATIONIQ_API_KEY y CLIENT_ORIGIN (cada variable está comentada en el archivo)
 npm install
-npm run migrate           # crea las tablas y datos iniciales (servicios, horarios)
+npm run migrate           # crea/actualiza las tablas; los datos iniciales (db/seed.sql) solo se
+                          # cargan si la base está vacía, nunca sobre un catálogo existente
 npm run dev                # http://localhost:4000
 ```
 
@@ -93,7 +112,18 @@ y Vercel hará despliegue continuo con cada `git push`.
 **Backend (server/):** al ser un servidor Express con conexión persistente a PostgreSQL,
 funciona mejor en un proveedor de servidor "siempre encendido" como **Render** o **Railway**
 (ambos con despliegue automático conectado a GitHub, igual que Vercel). Recuerda agregar
-`TOMTOM_API_KEY` también en las variables de entorno de ese proveedor. Si prefieres tener
+`TOMTOM_API_KEY` también en las variables de entorno de ese proveedor, junto con
+`LOCATIONIQ_API_KEY`, `DATABASE_URL`, `FIREBASE_SERVICE_ACCOUNT` y `CLIENT_ORIGIN` (la URL de tu
+frontend, ej. `https://mi-app.vercel.app`; admite varias separadas por coma y limita el CORS a
+esos orígenes — si no se define, el servidor acepta cualquiera y lo avisa en el log). Si el
+proveedor tiene configurada una variable `NODE_VERSION`, debe ser 22 (o quitarla para que use
+`engines.node`).
+
+**Orden recomendado al desplegar cambios de base de datos:** primero `npm run migrate` contra la
+base de producción y después el despliegue del código. Las migraciones están en
+`server/src/db/migrations/` y se registran en la tabla `schema_migrations`, así que cada una se
+aplica una sola vez. Si lo haces al revés, las rutas que usan columnas nuevas darán error hasta
+que corras la migración. Si prefieres tener
 todo en Vercel, la alternativa es adaptar las rutas de `server/src/routes` a funciones
 serverless de Vercel y usar una base de datos Postgres con pooler para serverless, como
 **Neon** o **Vercel Postgres** — avísame si quieres que prepare esa variante.

@@ -3,6 +3,7 @@ const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { calculateServicePrice } = require('../utils/pricing');
 const { isServiceAvailableForPet } = require('../utils/service-rules');
+const { parseId } = require('../utils/ids');
 
 const router = asyncRouter();
 
@@ -14,9 +15,12 @@ router.get('/', requireAuth, async (req, res) => {
     return res.json({ services: result.rows });
   }
 
+  const parsedPetId = parseId(petId);
+  if (!parsedPetId) return res.status(400).json({ error: 'La mascota indicada no es válida' });
+
   const petResult = await pool.query(
-    'SELECT species, size FROM pets WHERE id = $1 AND owner_id = $2',
-    [petId, req.user.id]
+    'SELECT species, size FROM pets WHERE id = $1 AND owner_id = $2 AND deleted_at IS NULL',
+    [parsedPetId, req.user.id]
   );
   const pet = petResult.rows[0];
 
