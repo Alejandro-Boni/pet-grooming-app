@@ -36,6 +36,10 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // `active` descarta respuestas de peticiones viejas: si el usuario cambia de día (o de
+    // dirección) rápido, la respuesta lenta del día anterior ya no pisa a la actual.
+    let active = true;
+
     if (
       !petId ||
       !serviceId ||
@@ -47,23 +51,36 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
     ) {
       setSlots([]);
       setSelectedSlot(null);
+      setIsLoading(false);
       onSelectSlot?.(null);
-      return;
+      return () => {
+        active = false;
+      };
     }
 
     setIsLoading(true);
     setError(null);
+    setSlots([]);
     setSelectedSlot(null);
     onSelectSlot?.(null);
 
     api
       .get(`/api/availability?date=${selectedDate}&serviceId=${serviceId}&petId=${petId}&lat=${lat}&lng=${lng}`)
       .then((data) => {
+        if (!active) return;
         const validSlots = (data.slots || []).filter((slot) => !isPastSlot(selectedDate, slot));
         setSlots(validSlots);
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setIsLoading(false));
+      .catch((err) => {
+        if (active) setError(err.message);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [petId, serviceId, lat, lng, selectedDate]);
 
   return (

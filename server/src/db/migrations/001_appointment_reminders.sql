@@ -12,4 +12,4 @@ CREATE TABLE IF NOT EXISTS appointment_reminders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_reminders_appointment ON appointment_reminders (appointment_id);
+CREATE INDEX IF NOT EXISTS idx_appointment_reminders_appointment ON appointment_reminders (appointment_id);

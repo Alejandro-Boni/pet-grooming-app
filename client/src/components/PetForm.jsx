@@ -78,6 +78,7 @@ export default function PetForm({ initialPet, onSubmit, onCancel, isSaving }) {
             <option value="pequeño">Pequeño</option>
             <option value="mediano">Mediano</option>
             <option value="grande">Grande</option>
+            <option value="gigante">Gigante</option>
           </select>
         </label>
 

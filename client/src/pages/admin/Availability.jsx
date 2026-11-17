@@ -122,7 +122,7 @@ export default function Availability() {
               <span>
                 {b.block_date}{' '}
                 {b.start_time
-                  ? `· ${b.start_time.slice(0, 5)}–${b.end_time.slice(0, 5)}`
+                  ? `· ${b.start_time.slice(0, 5)}–${b.end_time?.slice(0, 5)}`
                   : '· día completo'}
                 {b.reason ? ` · ${b.reason}` : ''}
               </span>

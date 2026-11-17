@@ -1,11 +1,12 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const { geocodeAddress } = require('../utils/locationiq');
+const { geocodeLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
 // POST /api/geocode  Body: { address: "Calle 123 #45-67, Bogotá" }
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, geocodeLimiter, async (req, res) => {
   const { address } = req.body;
   if (!address || !address.trim()) return res.status(400).json({ error: 'address es requerido' });
 

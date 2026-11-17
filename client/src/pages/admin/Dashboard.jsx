@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api/client';
+import { formatTime } from '../../utils/format';
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -22,7 +23,9 @@ function getNavigationUrls(appointment) {
 }
 
 export default function Dashboard() {
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
+  );
   const [appointments, setAppointments] = useState([]);
   const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [frequentCustomers, setFrequentCustomers] = useState(0);
@@ -192,8 +195,8 @@ export default function Dashboard() {
                     {appointment.service_name}
                   </p>
                   <p className="mt-1 text-sm text-[#F1E5C5]">
-                    {appointment.appointment_date} · {appointment.start_time} -{' '}
-                    {appointment.end_time}
+                    {appointment.appointment_date} · {formatTime(appointment.start_time)} -{' '}
+                    {formatTime(appointment.end_time)}
                   </p>
                   <p className="mt-2 text-sm text-[#F1E5C5]">
                     Teléfono:{' '}
