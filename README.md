@@ -103,6 +103,12 @@ npm run dev                # http://localhost:5173
 - Módulo del cliente: `http://localhost:5173/`
 - Panel de administración: `http://localhost:5173/admin` (requiere que el usuario tenga rol `admin`)
 
+El inicio de sesión y el registro requieren que estén activos Firebase y el backend. Si aparece
+“No se pudo conectar con la API”, inicia `npm run dev` desde `server/` y revisa que
+`VITE_API_URL` en `client/.env` apunte a ese servidor. Si el registro en Firebase se completó
+pero la API no estaba disponible, la cuenta ya puede existir: intenta **Ingresar** con ese correo
+en vez de volver a crearla.
+
 ## 5. Despliegue
 
 **Frontend (client/):** ideal para Vercel. Importa el repo, selecciona la carpeta `client`

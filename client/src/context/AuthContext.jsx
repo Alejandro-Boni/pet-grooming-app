@@ -10,6 +10,33 @@ import { api } from '../api/client';
 
 const AuthContext = createContext(null);
 
+function getAuthErrorMessage(error, action) {
+  switch (error?.code) {
+    case 'auth/email-already-in-use':
+      return 'Este correo ya tiene una cuenta. Inicia sesión en lugar de crear otra.';
+    case 'auth/invalid-email':
+      return 'El correo no tiene un formato válido.';
+    case 'auth/weak-password':
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    case 'auth/operation-not-allowed':
+      return 'El registro con correo y contraseña no está habilitado en Firebase.';
+    case 'auth/invalid-credential':
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return 'Correo o contraseña incorrectos.';
+    case 'auth/network-request-failed':
+      return 'No se pudo conectar con Firebase. Revisa tu conexión a internet e inténtalo de nuevo.';
+    case 'auth/too-many-requests':
+      return 'Hubo demasiados intentos. Espera un momento antes de volver a intentarlo.';
+    case 'auth/user-disabled':
+      return 'Esta cuenta está deshabilitada. Contacta al administrador.';
+    default:
+      return action === 'signup'
+        ? 'No se pudo crear la cuenta. Inténtalo de nuevo.'
+        : 'No se pudo iniciar sesión. Inténtalo de nuevo.';
+  }
+}
+
 export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(undefined); // undefined = todavía cargando
   const [profile, setProfile] = useState(null); // { id, role, name, email, phone }
@@ -37,7 +64,7 @@ export function AuthProvider({ children }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      setError('Correo o contraseña incorrectos');
+      setError(getAuthErrorMessage(err, 'login'));
       throw err;
     }
   }
@@ -47,7 +74,7 @@ export function AuthProvider({ children }) {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      setError('No se pudo crear la cuenta. ¿Ya tienes una?');
+      setError(getAuthErrorMessage(err, 'signup'));
       throw err;
     }
   }
@@ -63,6 +90,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!firebaseUser,
     isAdmin: profile?.role === 'admin',
     error,
+    clearError: () => setError(null),
     login,
     signup,
     logout,
