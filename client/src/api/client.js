@@ -3,15 +3,28 @@ import { auth } from '../firebase';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 async function request(path, options = {}) {
-  const token = await auth.currentUser?.getIdToken();
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  let token;
+  try {
+    token = await auth.currentUser?.getIdToken();
+  } catch {
+    throw new Error('No se pudo validar la sesión con Firebase. Verifica tu conexión e inténtalo de nuevo.');
+  }
+
+  let res;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch {
+    throw new Error(
+      'No se pudo conectar con la API. Verifica que el backend esté iniciado y que VITE_API_URL apunte a su dirección.'
+    );
+  }
 
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));

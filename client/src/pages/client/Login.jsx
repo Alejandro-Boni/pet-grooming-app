@@ -68,15 +68,18 @@ function LuxuryBadge() {
 }
 
 export default function Login() {
-  const { login, signup, error } = useAuth();
+  const { login, signup, error, clearError } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   async function handleSubmit(e) {
     e.preventDefault();
+    clearError();
+    setSubmitError(null);
     setIsSubmitting(true);
     try {
       if (mode === 'login') await login(email, password);
@@ -84,8 +87,8 @@ export default function Login() {
 
       const { user } = await api.get('/api/auth/me');
       navigate(user.role === 'admin' ? '/admin' : '/app');
-    } catch {
-      // el mensaje de error ya queda disponible vía useAuth().error
+    } catch (err) {
+      setSubmitError(err.message || 'No se pudo completar la solicitud. Inténtalo de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
@@ -162,9 +165,9 @@ export default function Login() {
                   </label>
                 </div>
 
-                {error && (
+                {(submitError || error) && (
                   <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-                    {error}
+                    {submitError || error}
                   </div>
                 )}
 
@@ -184,7 +187,11 @@ export default function Login() {
               </form>
 
               <button
-                onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                onClick={() => {
+                  setMode(mode === 'login' ? 'signup' : 'login');
+                  setSubmitError(null);
+                  clearError();
+                }}
                 className="mt-6 w-full rounded-full border border-[#D4AF37]/30 bg-[#111111] px-4 py-3 text-center text-sm text-[#F1E5C5] transition hover:border-[#E5C158] hover:text-white"
               >
                 {mode === 'login' ? '¿Primera vez? Crea tu cuenta' : 'Ya tengo una cuenta'}
