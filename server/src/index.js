@@ -20,7 +20,11 @@ if (corsConfig.restricted) {
   console.warn('CLIENT_ORIGIN no está definido: CORS permite cualquier origen. Defínelo en producción.');
 }
 app.use(cors(corsConfig.options));
-app.use(express.json());
+// inflate:false rechaza con 415 los cuerpos comprimidos (Content-Encoding). Esta API solo recibe
+// JSON plano desde el navegador y no necesita descomprimir nada. Así se cierra el aviso
+// GHSA-27r3-jxmh-p828 (body-parser < 1.20.9: una sola petición con bytes sobrantes tras un
+// cuerpo comprimido podía tumbar el proceso, sin autenticación). Se mantiene aunque se actualice.
+app.use(express.json({ inflate: false }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
