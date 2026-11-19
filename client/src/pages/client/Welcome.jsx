@@ -1,65 +1,6 @@
 import { Link } from 'react-router-dom';
 import PublicReviews from './PublicReviews';
 
-function LuxuryBadge() {
-  return (
-    <svg
-      width={150}
-      height={150}
-      viewBox="0 0 120 120"
-      aria-label="Mascota Rey"
-      className="drop-shadow-[0_0_30px_rgba(212,175,55,0.4)]"
-    >
-      <defs>
-        <linearGradient id="goldBadge" x1="0%" x2="100%" y1="0%" y2="100%">
-          <stop offset="0%" stopColor="#f9e9a5" />
-          <stop offset="28%" stopColor="#e7c75d" />
-          <stop offset="65%" stopColor="#c9981c" />
-          <stop offset="100%" stopColor="#8a630f" />
-        </linearGradient>
-
-        <linearGradient id="crownGold" x1="0%" x2="100%" y1="0%" y2="100%">
-          <stop offset="0%" stopColor="#fdf0ba" />
-          <stop offset="30%" stopColor="#d7b14d" />
-          <stop offset="70%" stopColor="#b57e13" />
-          <stop offset="100%" stopColor="#8d620d" />
-        </linearGradient>
-      </defs>
-
-      <g>
-        <circle cx="60" cy="60" r="47" fill="url(#goldBadge)" />
-        <circle cx="60" cy="60" r="42" fill="rgba(17,17,17,0.08)" />
-
-        <g transform="translate(30, 48) scale(0.6)" fill="#111111">
-          <ellipse cx="22" cy="18" rx="7" ry="9" transform="rotate(-15 22 18)" />
-          <ellipse cx="38" cy="11" rx="7" ry="9" transform="rotate(-5 38 11)" />
-          <ellipse cx="56" cy="12" rx="7" ry="9" transform="rotate(10 56 12)" />
-          <ellipse cx="71" cy="20" rx="7" ry="9" transform="rotate(20 71 20)" />
-          <path d="M46 32 C33 32, 27 41, 29 51 C31 61, 38 68, 47 68 C57 68, 63 61, 65 51 C67 41, 60 32, 46 32 Z" />
-        </g>
-
-        <g transform="translate(0,-10)">
-          <path
-            d="M18 44 L28 22 L40 36 L52 18 L60 30 L68 18 L80 36 L92 22 L102 44 L102 52 L18 52 Z"
-            fill="url(#crownGold)"
-            stroke="#f1d98a"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-          <path d="M24 52 H96 V56 H24 Z" fill="url(#crownGold)" />
-          <circle cx="28" cy="26" r="3.5" fill="#f7e8ad" />
-          <circle cx="40" cy="34" r="3.5" fill="#f7e8ad" />
-          <circle cx="52" cy="20" r="3.5" fill="#f7e8ad" />
-          <circle cx="60" cy="30" r="3.5" fill="#f7e8ad" />
-          <circle cx="68" cy="20" r="3.5" fill="#f7e8ad" />
-          <circle cx="80" cy="34" r="3.5" fill="#f7e8ad" />
-          <circle cx="92" cy="26" r="3.5" fill="#f7e8ad" />
-        </g>
-      </g>
-    </svg>
-  );
-}
-
 export default function Welcome() {
   return (
     <div className="min-h-screen bg-[#0F0F0F] px-4 py-8 text-white">
@@ -76,7 +17,11 @@ export default function Welcome() {
           <div className="relative z-10 flex min-h-[720px] flex-col justify-center p-6 sm:p-10 lg:p-12">
             <div className="mx-auto flex w-full max-w-5xl flex-col items-center text-center">
               <div className="mb-6">
-                <LuxuryBadge />
+                <img
+                  src="/logo-medallon.png"
+                  alt="Mascota Rey"
+                  className="h-40 w-40 object-contain drop-shadow-[0_0_30px_rgba(212,175,55,0.4)] sm:h-48 sm:w-48"
+                />
               </div>
 
               <div className="mb-5">
