@@ -48,6 +48,15 @@ test('el esquema reproduce la base de producción (recordatorios con UUID y CHEC
   }
 });
 
+test('el esquema y la migración soportan el tiempo de recogida y sus recargos', () => {
+  const schema = read('schema.sql');
+  const migration = read('migrations', '005_appointment_pickup_fees.sql');
+  for (const column of ['service_finished_at', 'picked_up_at', 'late_pickup_fee_cop']) {
+    assert.match(schema, new RegExp(column));
+    assert.match(migration, new RegExp(`ADD COLUMN IF NOT EXISTS ${column}`));
+  }
+});
+
 test('PROTECCIÓN: el runner ejecuta toda migración nueva sobre producción, así que ninguna puede ser destructiva', () => {
   const dir = path.join(dbDir, 'migrations');
   for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.sql'))) {

@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const TABS = [
@@ -11,6 +11,7 @@ const TABS = [
 
 export default function ClientLayout() {
   const { logout } = useAuth();
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-[#0F0F0F] text-white">
@@ -25,7 +26,9 @@ export default function ClientLayout() {
       </header>
 
       <main className="mx-auto max-w-lg px-5 pb-24 pt-6">
-        <Outlet />
+        <div key={location.pathname} className="page-enter">
+          <Outlet />
+        </div>
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 border-t border-[#D4AF37]/30 bg-[#111111]">

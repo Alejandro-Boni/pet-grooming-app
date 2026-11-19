@@ -22,6 +22,30 @@ function getNavigationUrls(appointment) {
   };
 }
 
+function getStatusLabel(status) {
+  const labels = {
+    pending: 'Pendiente',
+    in_progress: 'En curso',
+    done: 'Terminada',
+    cancelled: 'Cancelada',
+  };
+  return labels[status] || status || 'Sin estado';
+}
+
+function formatAppointmentDate(date) {
+  const dateKey = String(date).slice(0, 10);
+  return new Date(`${dateKey}T12:00:00`).toLocaleDateString('es-CO');
+}
+
+function formatBogotaDateTime(value) {
+  if (!value) return '';
+  return new Date(value).toLocaleString('es-CO', {
+    timeZone: 'America/Bogota',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+}
+
 export default function Dashboard() {
   const [date, setDate] = useState(
     new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
@@ -30,6 +54,21 @@ export default function Dashboard() {
   const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [frequentCustomers, setFrequentCustomers] = useState(0);
   const [automaticDiscounts, setAutomaticDiscounts] = useState(0);
+  const [incomeMonth, setIncomeMonth] = useState(() =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' })
+      .format(new Date())
+      .slice(0, 7)
+  );
+  const [monthlyAppointments, setMonthlyAppointments] = useState([]);
+  const [isLoadingIncome, setIsLoadingIncome] = useState(true);
+  const [isMonthlyReportLoaded, setIsMonthlyReportLoaded] = useState(false);
+  const [incomeError, setIncomeError] = useState('');
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const [incomeReportRefresh, setIncomeReportRefresh] = useState(0);
+  const [pickupActionId, setPickupActionId] = useState(null);
+  const [pickupErrors, setPickupErrors] = useState({});
+  const [pickupLinks, setPickupLinks] = useState({});
+  const [pickupMessages, setPickupMessages] = useState({});
 
   function load() {
     api
@@ -40,39 +79,140 @@ export default function Dashboard() {
   useEffect(load, [date]);
 
   useEffect(() => {
+    let active = true;
+
     async function loadSummary() {
-      const dateObj = new Date();
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const year = dateObj.getFullYear();
+      setIsLoadingIncome(true);
+      setIsMonthlyReportLoaded(false);
+      setMonthlyAppointments([]);
+      setMonthlyIncome(0);
+      setFrequentCustomers(0);
+      setIncomeError('');
+      try {
+        const [settingsResult, report] = await Promise.all([
+          api.get('/api/admin/settings'),
+          api.get(`/api/admin/reports/monthly-income?month=${encodeURIComponent(incomeMonth)}`),
+        ]);
+        if (!active) return;
 
-      const result = await api.get('/api/admin/settings');
-      const settings = result.settings || [];
+        const settings = settingsResult.settings || [];
+        const discountSetting = settings.find(
+          (setting) => setting.key === 'automatic_discount'
+        );
+        const list = report.appointments || [];
 
-      const discountSetting = settings.find(
-        (setting) => setting.key === 'automatic_discount'
-      );
-      setAutomaticDiscounts(
-        discountSetting ? Number(discountSetting.value || 0) : 0
-      );
-
-      const appts = await api.get(
-        `/api/admin/appointments?date=${year}-${month}-01`
-      );
-      const list = appts.appointments || [];
-      const income = list.reduce(
-        (sum, appointment) =>
-          sum +
-          Number(appointment.final_price_cop || appointment.price_cop || 0),
-        0
-      );
-
-      const uniqueClients = new Set(list.map((appointment) => appointment.client_id)).size;
-      setMonthlyIncome(income);
-      setFrequentCustomers(uniqueClients);
+        setAutomaticDiscounts(
+          discountSetting ? Number(discountSetting.value || 0) : 0
+        );
+        setMonthlyAppointments(list);
+        setMonthlyIncome(Number(report.total_income || 0));
+        setFrequentCustomers(
+          new Set(list.map((appointment) => appointment.client_id)).size
+        );
+        setIsMonthlyReportLoaded(true);
+      } catch (err) {
+        if (active) {
+          setIncomeError(err.message || 'No se pudo cargar el reporte mensual.');
+        }
+      } finally {
+        if (active) setIsLoadingIncome(false);
+      }
     }
 
     loadSummary();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [incomeMonth, incomeReportRefresh]);
+
+  async function downloadMonthlyIncomeReport() {
+    setIsDownloadingReport(true);
+    setIncomeError('');
+
+    try {
+      const monthDate = new Date(`${incomeMonth}-01T12:00:00`);
+      const reportMonthLabel = monthDate.toLocaleDateString('es-CO', {
+        month: 'long',
+        year: 'numeric',
+      });
+      const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+      const doc = new jsPDF({ orientation: 'landscape' });
+
+      doc.setFillColor(17, 17, 17);
+      doc.rect(0, 0, 297, 38, 'F');
+      doc.setTextColor(229, 193, 88);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('MASCOTA REY', 14, 17);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text(`Reporte de ingresos · ${reportMonthLabel}`, 14, 27);
+
+      doc.setTextColor(40, 40, 40);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(`Total del mes: ${currencyFormatter.format(monthlyIncome)}`, 14, 49);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`Citas terminadas: ${monthlyAppointments.length}`, 14, 56);
+      doc.text('Incluye recargos registrados; no registra pagos recibidos.', 14, 61);
+
+      autoTable(doc, {
+        startY: 68,
+        head: [[
+          'Fecha',
+          'Hora',
+          'Cliente',
+          'Mascota',
+          'Servicio',
+          'Estado',
+          'Servicio',
+          'Recargo',
+          'Total',
+        ]],
+        body: monthlyAppointments.map((appointment) => [
+          formatAppointmentDate(appointment.appointment_date),
+          formatTime(appointment.start_time),
+          appointment.client_name || 'Cliente',
+          appointment.pet_name || '',
+          appointment.service_name || '',
+          getStatusLabel(appointment.status),
+          currencyFormatter.format(Number(appointment.service_price_cop || 0)),
+          currencyFormatter.format(Number(appointment.late_pickup_fee_cop || 0)),
+          currencyFormatter.format(Number(appointment.amount_cop || 0)),
+        ]),
+        theme: 'grid',
+        styles: { font: 'helvetica', fontSize: 8, cellPadding: 3 },
+        headStyles: {
+          fillColor: [212, 175, 55],
+          textColor: [15, 15, 15],
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: { fillColor: [248, 246, 239] },
+        margin: { left: 14, right: 14 },
+      });
+
+      const pageCount = doc.getNumberOfPages();
+      for (let page = 1; page <= pageCount; page += 1) {
+        doc.setPage(page);
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Mascota Rey · Página ${page} de ${pageCount}`, 283, 203, {
+          align: 'right',
+        });
+      }
+
+      doc.save(`reporte-ingresos-${incomeMonth}.pdf`);
+    } catch (err) {
+      setIncomeError(err.message || 'No se pudo generar el PDF. Inténtalo de nuevo.');
+    } finally {
+      setIsDownloadingReport(false);
+    }
+  }
 
   async function updateStatus(id, status) {
     const res = await api.patch(`/api/admin/appointments/${id}`, { status });
@@ -82,6 +222,7 @@ export default function Dashboard() {
     }
 
     load();
+    setIncomeReportRefresh((refresh) => refresh + 1);
   }
 
   async function saveNotes(id, stylistNotes) {
@@ -99,15 +240,44 @@ export default function Dashboard() {
     }
 
     load();
+    setIncomeReportRefresh((refresh) => refresh + 1);
+  }
+
+  async function recordPickup(id) {
+    setPickupActionId(id);
+    setPickupErrors((errors) => ({ ...errors, [id]: '' }));
+    setPickupLinks((links) => ({ ...links, [id]: '' }));
+
+    try {
+      const result = await api.post(
+        `/api/admin/appointments/${id}/record-pickup`,
+        {}
+      );
+      load();
+      setIncomeReportRefresh((refresh) => refresh + 1);
+      if (result.whatsapp_link) {
+        setPickupLinks((links) => ({ ...links, [id]: result.whatsapp_link }));
+      }
+      if (result.message) {
+        setPickupMessages((messages) => ({ ...messages, [id]: result.message }));
+      }
+    } catch (err) {
+      setPickupErrors((errors) => ({
+        ...errors,
+        [id]: err.message || 'No se pudo registrar la recogida.',
+      }));
+    } finally {
+      setPickupActionId(null);
+    }
   }
 
   const monthLabel = useMemo(() => {
-    const dateObj = new Date(`${date}T00:00:00`);
+    const dateObj = new Date(`${incomeMonth}-01T12:00:00`);
     return dateObj.toLocaleDateString('es-CO', {
       month: 'long',
       year: 'numeric',
     });
-  }, [date]);
+  }, [incomeMonth]);
 
   return (
     <div className="min-h-screen bg-[#0F0F0F] px-2 py-4 text-white">
@@ -120,10 +290,41 @@ export default function Dashboard() {
             {currencyFormatter.format(monthlyIncome)}
           </h2>
           <p className="mt-2 text-sm text-[#F1E5C5]">
-            {monthlyIncome === 0
-              ? `Aún no hay ingresos registrados en ${monthLabel}.`
-              : 'Ingreso real del mes actual.'}
+            {isLoadingIncome
+              ? 'Cargando reporte mensual...'
+              : monthlyAppointments.length === 0
+                ? `Aún no hay citas terminadas en ${monthLabel}.`
+                : 'Suma de citas terminadas y recargos registrados; no registra pagos recibidos.'}
           </p>
+          <label className="mt-4 block text-xs text-[#F1E5C5]">
+            Mes del reporte
+            <input
+              type="month"
+              value={incomeMonth}
+              onChange={(event) => {
+                if (event.target.value) {
+                  setIsLoadingIncome(true);
+                  setIsMonthlyReportLoaded(false);
+                  setIncomeError('');
+                  setIncomeMonth(event.target.value);
+                }
+              }}
+              className="mt-1 block rounded-full border border-[#D4AF37]/40 bg-[#0F0F0F] px-3 py-2 text-sm text-white outline-none focus:border-[#E5C158]"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={downloadMonthlyIncomeReport}
+            disabled={isLoadingIncome || isDownloadingReport || !isMonthlyReportLoaded}
+            className="gold-button mt-4 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isDownloadingReport ? 'Generando PDF...' : 'Descargar reporte PDF'}
+          </button>
+          {incomeError && (
+            <p role="alert" className="mt-3 text-sm text-red-300">
+              {incomeError}
+            </p>
+          )}
         </div>
 
         <div className="royal-panel">
@@ -238,6 +439,83 @@ export default function Dashboard() {
                       )
                     )}
                   </p>
+
+                  {appointment.status === 'done' && (
+                    <div className="mt-4 rounded-[18px] border border-[#D4AF37]/30 bg-[#0F0F0F] p-3">
+                      <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">
+                        Recogida de mascota
+                      </p>
+                      {appointment.service_finished_at ? (
+                        <p className="mt-2 text-sm text-[#F1E5C5]">
+                          Conteo desde {formatBogotaDateTime(appointment.service_finished_at)}.
+                          Hay 15 minutos de cortesía; luego se cobran $5.000 COP por cada
+                          bloque iniciado de 15 minutos.
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm text-[#F1E5C5]">
+                          No hay hora de aviso guardada. Usa “Marcar terminado y avisar”
+                          para iniciar el conteo; no se aplican recargos retroactivos.
+                        </p>
+                      )}
+
+                      {appointment.picked_up_at ? (
+                        <div className="mt-3 space-y-1 text-sm text-[#F1E5C5]">
+                          <p>Recogida: {formatBogotaDateTime(appointment.picked_up_at)}</p>
+                          <p>
+                            Recargo por demora:{' '}
+                            <strong className="text-[#E5C158]">
+                              {currencyFormatter.format(
+                                Number(appointment.late_pickup_fee_cop || 0)
+                              )}
+                            </strong>
+                          </p>
+                          <p>
+                            Total del servicio:{' '}
+                            <strong className="text-white">
+                              {currencyFormatter.format(
+                                Number(
+                                  appointment.final_price_cop ||
+                                    appointment.price_cop ||
+                                    0
+                                ) + Number(appointment.late_pickup_fee_cop || 0)
+                              )}
+                            </strong>
+                          </p>
+                          {pickupMessages[appointment.id] && (
+                            <p className="mt-2 break-words rounded-xl border border-[#D4AF37]/20 bg-[#111111] p-3 text-xs">
+                              {pickupMessages[appointment.id]}
+                            </p>
+                          )}
+                          {pickupLinks[appointment.id] && (
+                            <a
+                              href={pickupLinks[appointment.id]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-2 inline-flex rounded-full border border-[#D4AF37]/60 px-4 py-2 text-sm font-medium text-[#E5C158] transition hover:border-[#E5C158]"
+                            >
+                              Abrir WhatsApp con el aviso del recargo
+                            </a>
+                          )}
+                        </div>
+                      ) : appointment.service_finished_at ? (
+                        <button
+                          type="button"
+                          onClick={() => recordPickup(appointment.id)}
+                          disabled={pickupActionId === appointment.id}
+                          className="gold-button mt-3 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {pickupActionId === appointment.id
+                            ? 'Registrando recogida...'
+                            : 'Registrar recogida'}
+                        </button>
+                      ) : null}
+                      {pickupErrors[appointment.id] && (
+                        <p role="alert" className="mt-2 text-sm text-red-300">
+                          {pickupErrors[appointment.id]}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -254,13 +532,16 @@ export default function Dashboard() {
                     <option value="cancelled">Cancelada</option>
                   </select>
 
-                  <button
-                    type="button"
-                    onClick={() => markDone(appointment.id)}
-                    className="rounded-full bg-green-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-green-500"
-                  >
-                    Marcar terminado y avisar
-                  </button>
+                  {(appointment.status !== 'done' ||
+                    !appointment.service_finished_at) && (
+                    <button
+                      type="button"
+                      onClick={() => markDone(appointment.id)}
+                      className="rounded-full bg-green-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-green-500"
+                    >
+                      Marcar terminado y avisar
+                    </button>
+                  )}
                 </div>
               </div>
 

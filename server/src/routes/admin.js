@@ -6,11 +6,60 @@ const { buildWhatsAppLink } = require('../services/whatsapp');
 const { validateBlackout } = require('../utils/blackouts');
 const { parseId } = require('../utils/ids');
 const { validateSetting } = require('../utils/validation');
+const {
+  PICKUP_GRACE_MINUTES,
+  PICKUP_FEE_BLOCK_MINUTES,
+  PICKUP_FEE_PER_BLOCK_COP,
+  calculateLatePickupFee,
+} = require('../utils/pickup-fee');
 
 const router = asyncRouter();
 router.use(requireAuth, requireAdmin);
 
 const VALID_STATUSES = ['pending', 'in_progress', 'done', 'cancelled'];
+
+router.get('/reports/monthly-income', async (req, res) => {
+  const { month } = req.query;
+  if (typeof month !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    return res.status(400).json({ error: 'month debe tener el formato YYYY-MM' });
+  }
+
+  const result = await pool.query(
+    `SELECT a.id,
+            a.appointment_date,
+            a.start_time,
+            a.end_time,
+            a.status,
+            a.client_id,
+            COALESCE(NULLIF(a.final_price_cop, 0), s.price_cop, 0)::integer AS service_price_cop,
+            a.late_pickup_fee_cop,
+            (COALESCE(NULLIF(a.final_price_cop, 0), s.price_cop, 0) +
+             COALESCE(a.late_pickup_fee_cop, 0))::integer AS amount_cop,
+            COALESCE(u.name, u.email, 'Cliente') AS client_name,
+            p.name AS pet_name,
+            s.name AS service_name
+     FROM appointments a
+     JOIN pets p ON p.id = a.pet_id
+     JOIN services s ON s.id = a.service_id
+     JOIN users u ON u.id = a.client_id
+     WHERE a.appointment_date >= $1::date
+       AND a.appointment_date < ($1::date + INTERVAL '1 month')
+       AND a.status = 'done'
+     ORDER BY a.appointment_date, a.start_time`,
+    [`${month}-01`]
+  );
+
+  const totalIncome = result.rows.reduce(
+    (total, appointment) => total + Number(appointment.amount_cop || 0),
+    0
+  );
+
+  res.json({
+    month,
+    appointments: result.rows,
+    total_income: totalIncome,
+  });
+});
 
 // El registro del recordatorio es un historial: si falla, no debe impedir que el
 // administrador reciba el enlace de WhatsApp ni deshacer el cambio de estado.
@@ -86,7 +135,11 @@ router.patch('/appointments/:id', async (req, res) => {
   const result = await pool.query(
     `UPDATE appointments SET
        status = COALESCE($1, status),
-       stylist_notes = COALESCE($2, stylist_notes)
+      stylist_notes = COALESCE($2, stylist_notes),
+      service_finished_at = CASE
+        WHEN $1 = 'done' THEN COALESCE(service_finished_at, NOW())
+        ELSE service_finished_at
+      END
      WHERE id = $3 RETURNING *`,
     [status || null, stylistNotes ?? null, appointmentId]
   );
@@ -100,7 +153,10 @@ router.patch('/appointments/:id', async (req, res) => {
   if (status === 'done') {
     const phone = current.rows[0].contact_phone;
     const message =
-      'Hola, tu servicio en Mascota Rey ya terminó. Puedes pasar a recoger a tu mascota cuando quieras. Gracias por confiar en nosotros.';
+      `Hola, tu servicio en Mascota Rey ya terminó. Cuentas con ${PICKUP_GRACE_MINUTES} minutos ` +
+      `desde que el servicio se marca como terminado para recoger a tu mascota. Después se ` +
+      `aplica un recargo de $${new Intl.NumberFormat('es-CO').format(PICKUP_FEE_PER_BLOCK_COP)} COP ` +
+      `por cada bloque iniciado de ${PICKUP_FEE_BLOCK_MINUTES} minutos de demora. Gracias por confiar en nosotros.`;
 
     whatsappLink = buildWhatsAppLink(phone, message);
 
@@ -111,6 +167,127 @@ router.patch('/appointments/:id', async (req, res) => {
     appointment: result.rows[0],
     whatsapp_link: whatsappLink,
   });
+});
+
+router.post('/appointments/:id/record-pickup', async (req, res) => {
+  const appointmentId = parseId(req.params.id);
+  if (!appointmentId) {
+    return res.status(400).json({ error: 'La cita indicada no es válida' });
+  }
+
+  const client = await pool.connect();
+  let transactionStarted = false;
+
+  try {
+    await client.query('BEGIN');
+    transactionStarted = true;
+
+    const appointmentRes = await client.query(
+      `SELECT a.*, p.name AS pet_name, u.name AS client_name,
+              COALESCE(a.client_phone, u.phone) AS contact_phone,
+              s.name AS service_name, s.price_cop AS service_price_cop
+       FROM appointments a
+       JOIN pets p ON p.id = a.pet_id
+       JOIN users u ON u.id = a.client_id
+       JOIN services s ON s.id = a.service_id
+       WHERE a.id = $1
+       FOR UPDATE OF a`,
+      [appointmentId]
+    );
+    const appointment = appointmentRes.rows[0];
+
+    if (!appointment) {
+      await client.query('ROLLBACK');
+      transactionStarted = false;
+      return res.status(404).json({ error: 'Cita no encontrada' });
+    }
+
+    if (appointment.status !== 'done') {
+      await client.query('ROLLBACK');
+      transactionStarted = false;
+      return res.status(409).json({
+        error: 'Solo se puede registrar la recogida de un servicio terminado.',
+      });
+    }
+
+    if (!appointment.service_finished_at) {
+      await client.query('ROLLBACK');
+      transactionStarted = false;
+      return res.status(409).json({
+        error: 'Primero registra el aviso de servicio terminado para iniciar el conteo.',
+      });
+    }
+
+    if (appointment.picked_up_at) {
+      await client.query('COMMIT');
+      transactionStarted = false;
+      return res.json({
+        appointment,
+        already_recorded: true,
+        late_pickup_fee_cop: Number(appointment.late_pickup_fee_cop || 0),
+      });
+    }
+
+    const clockResult = await client.query('SELECT NOW() AS picked_up_at');
+    const pickedUpAt = clockResult.rows[0].picked_up_at;
+    const latePickupFee = calculateLatePickupFee(
+      appointment.service_finished_at,
+      pickedUpAt
+    );
+    const updateResult = await client.query(
+      `UPDATE appointments
+       SET picked_up_at = $1, late_pickup_fee_cop = $2
+       WHERE id = $3
+       RETURNING *`,
+      [pickedUpAt, latePickupFee, appointmentId]
+    );
+
+    await client.query('COMMIT');
+    transactionStarted = false;
+
+    const servicePrice = Number(
+      appointment.final_price_cop || appointment.service_price_cop || 0
+    );
+    const totalPrice = servicePrice + latePickupFee;
+    let message = null;
+    let whatsappLink = null;
+
+    if (latePickupFee > 0) {
+      const formatCop = (amount) =>
+        `$${new Intl.NumberFormat('es-CO').format(amount)} COP`;
+      message =
+        `Hola, registramos la recogida de ${appointment.pet_name}. ` +
+        `Por superar los ${PICKUP_GRACE_MINUTES} minutos de cortesía, se aplica un ` +
+        `recargo por demora de ${formatCop(latePickupFee)} ` +
+        `(${Math.ceil(latePickupFee / PICKUP_FEE_PER_BLOCK_COP)} bloque(s) de ` +
+        `${PICKUP_FEE_BLOCK_MINUTES} minutos). El total del servicio con el recargo ` +
+        `es ${formatCop(totalPrice)}.`;
+      whatsappLink = buildWhatsAppLink(appointment.contact_phone, message);
+      await logReminder({
+        appointmentId,
+        type: 'pickup_ready',
+        phone: appointment.contact_phone,
+        message,
+      });
+    }
+
+    return res.json({
+      appointment: updateResult.rows[0],
+      already_recorded: false,
+      service_price_cop: servicePrice,
+      late_pickup_fee_cop: latePickupFee,
+      total_price_cop: totalPrice,
+      message,
+      whatsapp_link: whatsappLink,
+    });
+  } catch (err) {
+    if (transactionStarted) {
+      await client.query('ROLLBACK').catch(() => {});
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
 });
 
 router.post('/appointments/:id/send-pickup-reminder', async (req, res) => {
@@ -135,7 +312,10 @@ router.post('/appointments/:id/send-pickup-reminder', async (req, res) => {
 
   const phone = appointment.contact_phone;
   const message =
-    'Tu mascota ya está lista para recoger. Puedes pasar por ella en el vehículo móvil de Mascota Rey.';
+    `Tu mascota ya está lista para recoger. Cuentas con ${PICKUP_GRACE_MINUTES} minutos ` +
+    `de cortesía desde que el servicio se marca como terminado; luego se cobra ` +
+    `$${new Intl.NumberFormat('es-CO').format(PICKUP_FEE_PER_BLOCK_COP)} COP ` +
+    `por cada bloque iniciado de ${PICKUP_FEE_BLOCK_MINUTES} minutos de demora.`;
 
   const whatsappLink = buildWhatsAppLink(phone, message);
 

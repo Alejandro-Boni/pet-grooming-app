@@ -101,7 +101,7 @@ export default function MyAppointments() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-[28px] border border-[#D4AF37]/30 bg-[#111111] p-5 shadow-gold">
+      <div className="rounded-[28px] border border-[#D4AF37]/35 bg-[#111111]/90 p-5 shadow-gold">
         <h1 className="font-display text-3xl text-white">Mis citas</h1>
         <p className="mt-2 text-sm text-[#F1E5C5]">
           Mira el historial de tus servicios y deja una reseña si ya terminó la atención.
@@ -115,11 +115,11 @@ export default function MyAppointments() {
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-5 text-sm text-[#F1E5C5]">
+        <div className="rounded-2xl border border-[#D4AF37]/35 bg-[#111111]/90 p-5 text-sm text-[#F1E5C5] shadow-gold">
           Cargando tus citas...
         </div>
       ) : appointments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#D4AF37]/30 bg-[#111111] p-6 text-sm text-[#F1E5C5]">
+        <div className="rounded-2xl border border-dashed border-[#D4AF37]/35 bg-[#111111]/90 p-6 text-sm text-[#F1E5C5] shadow-gold">
           Aún no tienes citas agendadas.
         </div>
       ) : (
@@ -130,7 +130,7 @@ export default function MyAppointments() {
           return (
             <div
               key={appointment.id}
-              className="rounded-[24px] border border-[#D4AF37]/30 bg-[#111111] p-4"
+              className="rounded-[24px] border border-[#D4AF37]/35 bg-[#111111]/90 p-4 shadow-gold"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

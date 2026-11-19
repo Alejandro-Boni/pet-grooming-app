@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
+import PageTransitionLink from '../../components/PageTransitionLink';
+import { playRoyalPageTransition } from '../../utils/pageTransition';
 
 export default function Login() {
   const { login, signup, error, clearError } = useAuth();
@@ -22,7 +24,9 @@ export default function Login() {
       else await signup(email, password);
 
       const { user } = await api.get('/api/auth/me');
-      navigate(user.role === 'admin' ? '/admin' : '/app');
+      playRoyalPageTransition(() => {
+        navigate(user.role === 'admin' ? '/admin' : '/app');
+      });
     } catch (err) {
       setSubmitError(err.message || 'No se pudo completar la solicitud. Inténtalo de nuevo.');
     } finally {
@@ -37,6 +41,14 @@ export default function Login() {
           <div className="relative flex flex-col justify-center overflow-hidden border-b border-[#D4AF37]/20 bg-[#0F0F0F] p-8 lg:border-b-0 lg:border-r">
             <div className="absolute inset-0 bg-gold-radial opacity-80" />
             <div className="relative z-10">
+              <PageTransitionLink
+                to="/"
+                className="mb-6 inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-[#F1E5C5]/70 transition hover:text-[#E5C158]"
+              >
+                <span aria-hidden="true">←</span>
+                Volver
+              </PageTransitionLink>
+
               <div className="flex items-center gap-4">
                 <img
                   src="/logo-medallon.png"
