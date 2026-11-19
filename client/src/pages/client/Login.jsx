@@ -3,70 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
 
-function LuxuryBadge() {
-  return (
-    <svg
-      width={120}
-      height={120}
-      viewBox="0 0 120 120"
-      aria-label="Mascota Rey"
-      className="drop-shadow-[0_0_18px_rgba(212,175,55,0.35)]"
-    >
-      <defs>
-        <linearGradient id="goldBadge" x1="0%" x2="100%" y1="0%" y2="100%">
-          <stop offset="0%" stopColor="#f9e9a5" />
-          <stop offset="28%" stopColor="#e7c75d" />
-          <stop offset="65%" stopColor="#c9981c" />
-          <stop offset="100%" stopColor="#8a630f" />
-        </linearGradient>
-
-        <linearGradient id="crownGold" x1="0%" x2="100%" y1="0%" y2="100%">
-          <stop offset="0%" stopColor="#fdf0ba" />
-          <stop offset="30%" stopColor="#d7b14d" />
-          <stop offset="70%" stopColor="#b57e13" />
-          <stop offset="100%" stopColor="#8d620d" />
-        </linearGradient>
-      </defs>
-
-      <g>
-        <circle cx="60" cy="60" r="47" fill="url(#goldBadge)" />
-        <circle cx="60" cy="60" r="42" fill="rgba(17,17,17,0.08)" />
-
-        {/* Huella de perro centrada y posicionada en el medio del círculo */}
-        <g transform="translate(30, 48) scale(0.6)" fill="#111111">
-          {/* Dedos de la huella */}
-          <ellipse cx="22" cy="18" rx="7" ry="9" transform="rotate(-15 22 18)" />
-          <ellipse cx="38" cy="11" rx="7" ry="9" transform="rotate(-5 38 11)" />
-          <ellipse cx="56" cy="12" rx="7" ry="9" transform="rotate(10 56 12)" />
-          <ellipse cx="71" cy="20" rx="7" ry="9" transform="rotate(20 71 20)" />
-          
-          {/* Almohadilla principal de la huella */}
-          <path d="M46 32 C33 32, 27 41, 29 51 C31 61, 38 68, 47 68 C57 68, 63 61, 65 51 C67 41, 60 32, 46 32 Z" />
-        </g>
-
-        {/* Corona ajustada en la parte superior */}
-        <g transform="translate(0,-10)">
-          <path
-            d="M18 44 L28 22 L40 36 L52 18 L60 30 L68 18 L80 36 L92 22 L102 44 L102 52 L18 52 Z"
-            fill="url(#crownGold)"
-            stroke="#f1d98a"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-          <path d="M24 52 H96 V56 H24 Z" fill="url(#crownGold)" />
-          <circle cx="28" cy="26" r="3.5" fill="#f7e8ad" />
-          <circle cx="40" cy="34" r="3.5" fill="#f7e8ad" />
-          <circle cx="52" cy="20" r="3.5" fill="#f7e8ad" />
-          <circle cx="60" cy="30" r="3.5" fill="#f7e8ad" />
-          <circle cx="68" cy="20" r="3.5" fill="#f7e8ad" />
-          <circle cx="80" cy="34" r="3.5" fill="#f7e8ad" />
-          <circle cx="92" cy="26" r="3.5" fill="#f7e8ad" />
-        </g>
-      </g>
-    </svg>
-  );
-}
-
 export default function Login() {
   const { login, signup, error, clearError } = useAuth();
   const navigate = useNavigate();
@@ -102,7 +38,11 @@ export default function Login() {
             <div className="absolute inset-0 bg-gold-radial opacity-80" />
             <div className="relative z-10">
               <div className="flex items-center gap-4">
-                <LuxuryBadge />
+                <img
+                  src="/logo-medallon.png"
+                  alt="Mascota Rey"
+                  className="h-32 w-32 shrink-0 object-contain drop-shadow-[0_0_18px_rgba(212,175,55,0.35)]"
+                />
 
                 <div className="leading-none">
                   <div className="font-display text-[2.5rem] tracking-[0.08em] text-[#E5C158]">
@@ -119,9 +59,11 @@ export default function Login() {
           <div className="flex items-center justify-center p-6 sm:p-8 lg:p-10">
             <div className="w-full max-w-md">
               <div className="mb-8 text-center">
-                <div className="login-dog-badge mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-[#D4AF37]/60 bg-[#D4AF37]/10 shadow-gold">
-                  <span className="login-dog-emoji text-5xl">🐶</span>
-                </div>
+                <img
+                  src="/logo-medallon.png"
+                  alt=""
+                  className="mx-auto h-24 w-24 object-contain drop-shadow-[0_0_18px_rgba(212,175,55,0.35)]"
+                />
 
                 <h2 className="mt-5 font-display text-4xl text-white">
                   {mode === 'login' ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
