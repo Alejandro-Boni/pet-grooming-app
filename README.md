@@ -134,6 +134,11 @@ todo en Vercel, la alternativa es adaptar las rutas de `server/src/routes` a fun
 serverless de Vercel y usar una base de datos Postgres con pooler para serverless, como
 **Neon** o **Vercel Postgres** — avísame si quieres que prepare esa variante.
 
+Al marcar un servicio como terminado comienza el conteo de recogida. Hay 15 minutos de cortesía;
+al registrar la recogida, cada bloque iniciado adicional de 15 minutos suma $5.000 COP. El panel
+prepara un enlace de WhatsApp con el recargo, pero el mensaje debe enviarse manualmente. Las citas
+terminadas antes de aplicar la migración y sin hora de aviso guardada no reciben cargos retroactivos.
+
 Para la base de datos en la nube, cualquiera de estas opciones funciona bien con este
 esquema: **Neon**, **Supabase**, **Render Postgres** o **Railway Postgres**.
 

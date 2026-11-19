@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-
 const contact = {
   phone1: '+57 320 436 5478',
   phone1Href: 'tel:+573204365478',
@@ -12,19 +10,8 @@ const contact = {
 };
 
 export default function AboutUs() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setVisible(true), 50);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <div
-      className={`space-y-5 pb-8 transition-all duration-700 ${
-        visible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-      }`}
-    >
+    <div className="space-y-5 pb-8">
       <section className="royal-panel">
         <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Nosotros</p>
         <h1 className="mt-3 font-display text-3xl text-white">Mascota Rey</h1>

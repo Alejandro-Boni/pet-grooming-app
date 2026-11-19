@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import PublicReviews from './PublicReviews';
+import PageTransitionLink from '../../components/PageTransitionLink';
 
 export default function Welcome() {
   return (
@@ -42,12 +42,12 @@ export default function Welcome() {
               </p>
 
               <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
-                <Link
+                <PageTransitionLink
                   to="/login"
                   className="inline-flex items-center justify-center rounded-full border border-[#D4AF37]/80 bg-gradient-to-r from-[#E5C158] via-[#D4AF37] to-[#A87C1F] px-8 py-4 text-base font-semibold text-[#0F0F0F] shadow-[0_10px_25px_rgba(212,175,55,0.35)] transition hover:brightness-105"
                 >
                   Agendar una cita
-                </Link>
+                </PageTransitionLink>
 
                 <a
                   href="https://wa.me/573204365478"

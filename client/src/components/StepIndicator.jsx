@@ -9,16 +9,27 @@ export default function StepIndicator({ steps, currentStep }) {
           <li key={label} className="flex items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-2">
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-medium
-                  ${isActive ? 'bg-ochre text-cream' : isDone ? 'bg-pine text-cream' : 'bg-cream text-ink/40 border border-sage/60'}`}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-sm font-medium ${
+                  isActive
+                    ? 'border-[#E5C158] bg-[#D4AF37] text-[#0F0F0F]'
+                    : isDone
+                      ? 'border-[#D4AF37]/60 bg-[#D4AF37]/15 text-[#E5C158]'
+                      : 'border-[#D4AF37]/30 bg-[#111111] text-[#F1E5C5]/60'
+                }`}
               >
                 {stepNumber}
               </span>
-              <span className={`hidden text-sm sm:inline ${isActive ? 'text-ink font-medium' : 'text-ink/50'}`}>
+              <span
+                className={`hidden text-sm sm:inline ${
+                  isActive ? 'font-medium text-[#E5C158]' : 'text-[#F1E5C5]/65'
+                }`}
+              >
                 {label}
               </span>
             </div>
-            {stepNumber !== steps.length && <span className="h-px w-4 bg-sage/60 sm:w-8" />}
+            {stepNumber !== steps.length && (
+              <span className="h-px w-4 bg-[#D4AF37]/40 sm:w-8" />
+            )}
           </li>
         );
       })}

@@ -223,8 +223,8 @@ export default function BookingFlow() {
                 }}
                 className={`w-full rounded-2xl border p-4 text-left ${
                   selectedService?.id === service.id
-                    ? 'border-[#D4AF37] bg-[#D4AF37]/10'
-                    : 'border-[#D4AF37]/30 bg-[#111111]'
+                    ? 'border-[#E5C158] bg-[#D4AF37]/10 shadow-gold'
+                    : 'border-[#D4AF37]/30 bg-[#111111] shadow-gold'
                 }`}
               >
                 <p className="font-display text-xl text-white">{service.name}</p>
@@ -246,8 +246,8 @@ export default function BookingFlow() {
               }}
             />
 
-            <div className="rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-4">
-              <label className="mb-2 block text-sm text-[#F1E5C5]">Número de celular</label>
+            <div className="rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-4 text-[#F1E5C5] shadow-gold">
+              <label className="mb-2 block text-sm text-[#E5C158]">Número de celular</label>
               <input
                 type="tel"
                 value={phone}
@@ -255,7 +255,7 @@ export default function BookingFlow() {
                 placeholder="320 436 5478"
                 autoComplete="tel"
                 required
-                className="w-full rounded-xl border border-[#D4AF37]/40 bg-[#0F0F0F] px-3 py-2.5 text-white outline-none placeholder:text-white/40"
+                className="w-full rounded-xl border border-[#D4AF37]/40 bg-[#0F0F0F] px-3 py-2.5 text-white outline-none placeholder:text-[#F1E5C5]/50 focus:border-[#E5C158]"
               />
               {phone && !isValidPhone(phone) && (
                 <p className="mt-2 text-sm text-red-300">
@@ -280,17 +280,17 @@ export default function BookingFlow() {
         )}
 
         {step === 4 && (
-          <div className="mt-6 rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-5 text-[#F1E5C5]">
+          <div className="mt-6 rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-5 text-[#F1E5C5] shadow-gold">
             <h2 className="font-display text-2xl text-white">Confirmación</h2>
 
             <div className="mt-4 space-y-2 text-sm">
-              <p><strong>Mascota:</strong> {selectedPet?.name}</p>
-              <p><strong>Servicio:</strong> {selectedService?.name}</p>
-              <p><strong>Dirección:</strong> {location?.address}</p>
-              <p><strong>Fecha:</strong> {selectedSlot?.date}</p>
-              <p><strong>Hora:</strong> {selectedSlot?.time}</p>
-              <p><strong>Celular:</strong> {phone}</p>
-              <p><strong>Precio:</strong> {formatPrice(Number(finalPrice))}</p>
+              <p><strong className="text-[#E5C158]">Mascota:</strong> {selectedPet?.name}</p>
+              <p><strong className="text-[#E5C158]">Servicio:</strong> {selectedService?.name}</p>
+              <p><strong className="text-[#E5C158]">Dirección:</strong> {location?.address}</p>
+              <p><strong className="text-[#E5C158]">Fecha:</strong> {selectedSlot?.date}</p>
+              <p><strong className="text-[#E5C158]">Hora:</strong> {selectedSlot?.time}</p>
+              <p><strong className="text-[#E5C158]">Celular:</strong> {phone}</p>
+              <p><strong className="text-[#E5C158]">Precio:</strong> {formatPrice(Number(finalPrice))}</p>
             </div>
 
             {bookingError && (
