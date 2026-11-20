@@ -72,7 +72,7 @@ export default function AdminReviews() {
           Aún no hay reseñas.
         </p>
       ) : (
-        <div className="mt-5 space-y-3">
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
           {reviews.map((review) => (
             <article
               key={review.id}

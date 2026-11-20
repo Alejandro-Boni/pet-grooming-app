@@ -47,7 +47,9 @@ export default function AdminLayout() {
       </aside>
 
       <main className="flex-1 bg-[#0F0F0F] px-5 py-6 sm:px-8">
-        <Outlet />
+        <div className="mx-auto max-w-7xl">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

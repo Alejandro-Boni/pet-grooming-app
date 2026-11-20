@@ -33,10 +33,10 @@ export default function Availability() {
   }
 
   return (
-    <div className="max-w-xl">
+    <div className="max-w-5xl">
       <h1 className="font-display text-2xl text-white">Disponibilidad</h1>
-
-      <section className="mt-6 rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-4 shadow-gold">
+      <div className="bento-grid mt-6">
+      <section className="bento-card md:col-span-4">
         <h2 className="font-display text-lg text-[#F7F1E3]">
           Cupo máximo de mascotas simultáneas
         </h2>
@@ -63,7 +63,7 @@ export default function Availability() {
         </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-4 shadow-gold">
+      <section className="bento-card md:col-span-8">
         <h2 className="font-display text-lg text-[#F7F1E3]">Bloquear días u horas</h2>
 
         <p className="mt-1 text-sm text-[#F1E5C5]">
@@ -110,10 +110,10 @@ export default function Availability() {
         </form>
       </section>
 
-      <section className="mt-6">
+      <section className="bento-card md:col-span-12">
         <h2 className="font-display text-lg text-white">Bloqueos activos</h2>
 
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
           {blackouts.map((b) => (
             <div
               key={b.id}
@@ -141,6 +141,7 @@ export default function Availability() {
           )}
         </div>
       </section>
+      </div>
     </div>
   );
 }

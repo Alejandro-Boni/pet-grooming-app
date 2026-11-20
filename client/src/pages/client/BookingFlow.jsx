@@ -175,7 +175,7 @@ export default function BookingFlow() {
         <StepIndicator currentStep={step} steps={STEPS} />
 
         {step === 1 && (
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             {petsError && (
               <p className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
                 {petsError}
@@ -197,7 +197,7 @@ export default function BookingFlow() {
         )}
 
         {step === 2 && (
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             {servicesError && (
               <p className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
                 {servicesError}
