@@ -11,6 +11,30 @@ const contact = {
   tiktok: 'https://www.tiktok.com/@mascota.rey?_r=1&_t=ZS-9B3PgBxftTg',
 };
 
+const team = [
+  {
+    name: 'Arelsy Rodriguez',
+    role: 'Gerente Mascota Rey',
+    image: '/arelsy-rodriguez.jpg',
+    description:
+      'Impulsadora de charlas sobre cuidado pet friendly, brinda primeros auxilios para mascotas y es estilista profesional.',
+  },
+  {
+    name: 'Jhon Bonilla',
+    role: 'Estilista canino y felino',
+    image: '/jhon-bonilla.jpg',
+    description:
+      'Estilista especializado en el cuidado y arreglo estético de perros y gatos.',
+  },
+  {
+    name: 'Argenis Rodriguez',
+    role: 'Auxiliar de apoyo',
+    image: '/argenis-rodriguez.jpg',
+    description:
+      'Brinda apoyo en la atención estética canina y felina, cuidando cada detalle del bienestar y la comodidad de las mascotas.',
+  },
+];
+
 export default function AboutUs() {
   const [visible, setVisible] = useState(false);
 
@@ -57,8 +81,32 @@ export default function AboutUs() {
       <section className="royal-panel">
         <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Nuestro equipo</p>
 
-        <div className="mt-4 rounded-[20px] border border-dashed border-[#D4AF37]/30 bg-[#0F0F0F] p-5 text-sm text-[#F1E5C5]">
-          Información del equipo disponible próximamente.
+        <div className="mt-4 space-y-3">
+          {team.map((member, index) => (
+            <article
+              key={member.name}
+              className="bento-reveal-item grid grid-cols-[112px_1fr] gap-4 rounded-[20px] border border-[#D4AF37]/20 bg-[#0F0F0F] p-3 sm:grid-cols-[150px_1fr] sm:gap-5 sm:p-4"
+              style={{ '--reveal-delay': `${280 + index * 70}ms` }}
+            >
+              <img
+                src={member.image}
+                alt={member.name}
+                className="h-36 w-full rounded-[16px] border border-[#D4AF37]/30 object-cover object-center sm:h-40"
+              />
+
+              <div className="flex min-w-0 flex-col justify-center">
+                <p className="text-xs uppercase tracking-[0.16em] text-[#E5C158]">
+                  {member.role}
+                </p>
+                <h2 className="mt-1 font-display text-xl text-white sm:text-2xl">
+                  {member.name}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[#F1E5C5]/85">
+                  {member.description}
+                </p>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
