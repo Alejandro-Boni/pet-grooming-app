@@ -73,10 +73,11 @@ export default function AdminReviews() {
         </p>
       ) : (
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {reviews.map((review) => (
+          {reviews.map((review, index) => (
             <article
               key={review.id}
-              className="rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-4"
+              className="bento-reveal-item rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-4"
+              style={{ '--reveal-delay': `${index * 70}ms` }}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>

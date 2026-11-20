@@ -181,11 +181,12 @@ export default function BookingFlow() {
                 {petsError}
               </p>
             )}
-            {pets.map((pet) => (
+            {pets.map((pet, index) => (
               <PetCard
                 key={pet.id}
                 pet={pet}
                 selected={selectedPet?.id === pet.id}
+                revealDelay={index * 70}
                 onSelect={() => {
                   setSelectedPet(pet);
                   setSelectedService(null);
@@ -213,7 +214,7 @@ export default function BookingFlow() {
                 No hay servicios disponibles para esta mascota.
               </p>
             )}
-            {services.map((service) => (
+            {services.map((service, index) => (
               <button
                 key={service.id}
                 type="button"
@@ -221,11 +222,12 @@ export default function BookingFlow() {
                   setSelectedService(service);
                   setSelectedSlot(null);
                 }}
-                className={`w-full rounded-2xl border p-4 text-left ${
+                className={`bento-reveal-item w-full rounded-2xl border p-4 text-left ${
                   selectedService?.id === service.id
                     ? 'border-[#E5C158] bg-[#D4AF37]/10 shadow-gold'
                     : 'border-[#D4AF37]/30 bg-[#111111] shadow-gold'
                 }`}
+                style={{ '--reveal-delay': `${index * 70}ms` }}
               >
                 <p className="font-display text-xl text-white">{service.name}</p>
                 <p className="mt-2 text-sm text-[#F1E5C5]">{service.description}</p>
@@ -239,14 +241,19 @@ export default function BookingFlow() {
 
         {step === 3 && (
           <div className="mt-6 space-y-5">
-            <AddressInput
-              onConfirm={(nextLocation) => {
-                setLocation(nextLocation);
-                setSelectedSlot(null);
-              }}
-            />
+            <div className="bento-reveal-item" style={{ '--reveal-delay': '0ms' }}>
+              <AddressInput
+                onConfirm={(nextLocation) => {
+                  setLocation(nextLocation);
+                  setSelectedSlot(null);
+                }}
+              />
+            </div>
 
-            <div className="rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-4 text-[#F1E5C5] shadow-gold">
+            <div
+              className="bento-reveal-item rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-4 text-[#F1E5C5] shadow-gold"
+              style={{ '--reveal-delay': '70ms' }}
+            >
               <label className="mb-2 block text-sm text-[#E5C158]">Número de celular</label>
               <input
                 type="tel"
@@ -269,18 +276,20 @@ export default function BookingFlow() {
               )}
             </div>
 
-            <AvailabilityCalendar
-              petId={selectedPet?.id}
-              serviceId={selectedService?.id}
-              lat={location?.lat}
-              lng={location?.lng}
-              onSelectSlot={setSelectedSlot}
-            />
+            <div className="bento-reveal-item" style={{ '--reveal-delay': '140ms' }}>
+              <AvailabilityCalendar
+                petId={selectedPet?.id}
+                serviceId={selectedService?.id}
+                lat={location?.lat}
+                lng={location?.lng}
+                onSelectSlot={setSelectedSlot}
+              />
+            </div>
           </div>
         )}
 
         {step === 4 && (
-          <div className="mt-6 rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-5 text-[#F1E5C5] shadow-gold">
+          <div className="bento-reveal-item mt-6 rounded-2xl border border-[#D4AF37]/30 bg-[#111111] p-5 text-[#F1E5C5] shadow-gold">
             <h2 className="font-display text-2xl text-white">Confirmación</h2>
 
             <div className="mt-4 space-y-2 text-sm">

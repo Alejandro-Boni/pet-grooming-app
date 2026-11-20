@@ -46,8 +46,14 @@ export default function MyPets() {
       </div>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
-        {pets.map((pet) => (
-          <PetCard key={pet.id} pet={pet} onEdit={setEditingPet} onDelete={handleDelete} />
+        {pets.map((pet, index) => (
+          <PetCard
+            key={pet.id}
+            pet={pet}
+            onEdit={setEditingPet}
+            onDelete={handleDelete}
+            revealDelay={index * 70}
+          />
         ))}
 
         {pets.length === 0 && (
