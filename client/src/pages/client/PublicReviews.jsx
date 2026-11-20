@@ -23,7 +23,7 @@ export default function PublicReviews() {
   return (
     <section className="mx-auto mt-10 max-w-6xl" aria-labelledby="reviews-title">
       <div className="rounded-[28px] border border-[#D4AF37]/30 bg-[#111111] p-6 shadow-gold sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="bento-reveal-item flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">
               Experiencias de nuestros clientes
@@ -54,10 +54,11 @@ export default function PublicReviews() {
           </p>
         ) : (
           <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {reviewData.reviews.map((review) => (
+            {reviewData.reviews.map((review, index) => (
               <article
                 key={review.id}
-                className="rounded-2xl border border-[#D4AF37]/20 bg-[#0F0F0F] p-4"
+                className="bento-reveal-item rounded-2xl border border-[#D4AF37]/20 bg-[#0F0F0F] p-4"
+                style={{ '--reveal-delay': `${index * 70}ms` }}
               >
                 <p
                   className="text-lg tracking-widest text-[#E5C158]"

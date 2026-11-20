@@ -12,7 +12,7 @@ const contact = {
 export default function AboutUs() {
   return (
     <div className="space-y-5 pb-8">
-      <section className="royal-panel">
+      <section className="royal-panel bento-reveal-item" style={{ '--reveal-delay': '0ms' }}>
         <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Nosotros</p>
         <h1 className="mt-3 font-display text-3xl text-white">Mascota Rey</h1>
 
@@ -24,7 +24,7 @@ export default function AboutUs() {
         </p>
       </section>
 
-      <section className="royal-panel">
+      <section className="royal-panel bento-reveal-item" style={{ '--reveal-delay': '70ms' }}>
         <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Nuestra misión</p>
         <p className="mt-3 text-sm leading-7 text-[#F1E5C5]">
           Brindar un servicio profesional y humano que cuide el bienestar físico y
@@ -33,7 +33,7 @@ export default function AboutUs() {
         </p>
       </section>
 
-      <section className="royal-panel">
+      <section className="royal-panel bento-reveal-item" style={{ '--reveal-delay': '140ms' }}>
         <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Nuestra visión</p>
         <p className="mt-3 text-sm leading-7 text-[#F1E5C5]">
           Ser la opción preferida para el cuidado de mascotas en la ciudad,
@@ -41,7 +41,7 @@ export default function AboutUs() {
         </p>
       </section>
 
-      <section className="royal-panel">
+      <section className="royal-panel bento-reveal-item" style={{ '--reveal-delay': '210ms' }}>
         <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Nuestro equipo</p>
 
         <div className="mt-4 rounded-[20px] border border-dashed border-[#D4AF37]/30 bg-[#0F0F0F] p-5 text-sm text-[#F1E5C5]">
@@ -49,7 +49,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      <section className="royal-panel">
+      <section className="royal-panel bento-reveal-item" style={{ '--reveal-delay': '280ms' }}>
         <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Contacto</p>
 
         <div className="mt-4 space-y-3">
@@ -99,7 +99,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      <section className="royal-panel">
+      <section className="royal-panel bento-reveal-item" style={{ '--reveal-delay': '350ms' }}>
         <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">Síguenos</p>
 
         <div className="mt-4 grid grid-cols-2 gap-3">
@@ -123,7 +123,7 @@ export default function AboutUs() {
         </div>
       </section>
 
-      <section className="royal-panel">
+      <section className="royal-panel bento-reveal-item" style={{ '--reveal-delay': '420ms' }}>
         <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">¿Por qué elegirnos?</p>
 
         <ul className="mt-4 space-y-2 text-sm text-[#F1E5C5]">

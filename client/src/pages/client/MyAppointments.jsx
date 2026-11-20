@@ -101,7 +101,7 @@ export default function MyAppointments() {
 
   return (
     <div className="space-y-5">
-      <div className="bento-card">
+      <div className="bento-card bento-reveal-item">
         <h1 className="font-display text-3xl text-white">Mis citas</h1>
         <p className="mt-2 text-sm text-[#F1E5C5]">
           Mira el historial de tus servicios y deja una reseña si ya terminó la atención.
@@ -124,14 +124,15 @@ export default function MyAppointments() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-        {appointments.map((appointment) => {
+        {appointments.map((appointment, index) => {
           const finished = isAppointmentFinished(appointment);
           const reviewDraft = reviewDrafts[appointment.id];
 
           return (
             <div
               key={appointment.id}
-              className="bento-card-hover"
+              className="bento-card-hover bento-reveal-item"
+              style={{ '--reveal-delay': `${index * 70}ms` }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
