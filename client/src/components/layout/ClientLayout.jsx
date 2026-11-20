@@ -25,14 +25,14 @@ export default function ClientLayout() {
         </button>
       </header>
 
-      <main className="mx-auto max-w-lg px-5 pb-24 pt-6">
+      <main className="mx-auto max-w-5xl px-5 pb-24 pt-6">
         <div key={location.pathname} className="page-enter">
           <Outlet />
         </div>
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 border-t border-[#D4AF37]/30 bg-[#111111]">
-        <div className="mx-auto flex max-w-lg justify-around py-2">
+        <div className="mx-auto flex max-w-5xl justify-around py-2">
           {TABS.map((tab) => (
             <NavLink
               key={tab.to}

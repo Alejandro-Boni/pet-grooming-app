@@ -55,6 +55,22 @@
   .royal-panel {
     @apply rounded-[28px] border border-[#D4AF37]/35 bg-[#111111]/90 p-5 shadow-gold backdrop-blur-md;
   }
+
+  .bento-grid {
+    @apply grid grid-cols-1 gap-4 md:grid-cols-12;
+  }
+
+  .bento-card {
+    @apply rounded-[28px] border border-[#D4AF37]/30 bg-[#111111]/90 p-5 shadow-gold backdrop-blur-md;
+  }
+
+  .bento-card-hover {
+    @apply bento-card transition duration-200 hover:border-[#E5C158]/70 hover:-translate-y-0.5;
+  }
+
+  .bento-kicker {
+    @apply text-xs uppercase tracking-[0.2em] text-[#E5C158];
+  }
 }
 
 .royal-page-transition {

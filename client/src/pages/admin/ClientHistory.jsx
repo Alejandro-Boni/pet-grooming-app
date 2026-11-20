@@ -21,48 +21,55 @@ export default function ClientHistory() {
   }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="font-display text-2xl text-ink">Historial de clientes</h1>
+    <div className="bento-grid">
+      <div className="bento-card md:col-span-4">
+        <h1 className="font-display text-2xl text-white">Historial de clientes</h1>
 
-      <form onSubmit={search} className="mt-4 flex gap-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nombre, teléfono o correo"
-          className="flex-1 rounded-lg border border-[#D4AF37]/60 bg-[#1A1A1A] px-3 py-2 text-sm text-white caret-[#E5C158] placeholder:text-white/50 focus:border-[#D4AF37] focus:outline-none"
-        />
-        <button type="submit" className="rounded-full bg-pine px-4 py-2 text-sm text-cream">
-          Buscar
-        </button>
-      </form>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {clients.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => openClient(c)}
-            className={`rounded-full border px-3 py-1.5 text-sm ${
-              selectedClient?.id === c.id ? 'border-ochre bg-ochre/10' : 'border-sage/60'
-            }`}
-          >
-            {c.name || c.email || c.phone}
+        <form onSubmit={search} className="mt-4 flex gap-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nombre, teléfono o correo"
+            className="min-w-0 flex-1 rounded-xl border border-[#D4AF37]/60 bg-[#0F0F0F] px-3 py-2 text-sm text-white caret-[#E5C158] placeholder:text-white/50 focus:border-[#D4AF37] focus:outline-none"
+          />
+          <button type="submit" className="gold-button px-4 py-2 text-sm">
+            Buscar
           </button>
-        ))}
+        </form>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {clients.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => openClient(c)}
+              className={`rounded-full border px-3 py-1.5 text-sm ${
+                selectedClient?.id === c.id
+                  ? 'border-[#E5C158] bg-[#D4AF37]/10 text-[#E5C158]'
+                  : 'border-[#D4AF37]/40 text-[#F1E5C5]'
+              }`}
+            >
+              {c.name || c.email || c.phone}
+            </button>
+          ))}
+        </div>
       </div>
 
       {selectedClient && (
-        <div className="mt-6 space-y-2">
+        <div className="bento-card md:col-span-8">
+          <p className="bento-kicker">Historial seleccionado</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
           {history.map((a) => (
-            <div key={a.id} className="rounded-xl border border-sage/50 bg-cream p-4">
+            <div key={a.id} className="rounded-[20px] border border-[#D4AF37]/30 bg-[#0F0F0F] p-4">
               <div className="flex items-center justify-between">
-                <p className="font-display text-lg text-ink">{a.pet_name} · {a.service_name}</p>
+                <p className="font-display text-lg text-white">{a.pet_name} · {a.service_name}</p>
                 <StatusBadge status={a.display_status || a.status} />
               </div>
-              <p className="mt-1 text-sm text-ink/60">{a.appointment_date} · {a.start_time?.slice(0, 5)}</p>
-              {a.stylist_notes && <p className="mt-2 text-sm text-ink/80">Nota: {a.stylist_notes}</p>}
+              <p className="mt-1 text-sm text-[#F1E5C5]/70">{a.appointment_date} · {a.start_time?.slice(0, 5)}</p>
+              {a.stylist_notes && <p className="mt-2 text-sm text-[#F1E5C5]">Nota: {a.stylist_notes}</p>}
             </div>
           ))}
-          {history.length === 0 && <p className="text-sm text-ink/50">Este cliente aún no tiene citas registradas.</p>}
+          </div>
+          {history.length === 0 && <p className="mt-3 text-sm text-[#F1E5C5]/70">Este cliente aún no tiene citas registradas.</p>}
         </div>
       )}
     </div>

@@ -45,7 +45,7 @@ export default function MyPets() {
         </button>
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
         {pets.map((pet) => (
           <PetCard key={pet.id} pet={pet} onEdit={setEditingPet} onDelete={handleDelete} />
         ))}

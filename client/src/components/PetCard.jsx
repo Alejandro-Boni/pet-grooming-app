@@ -3,7 +3,7 @@ import PetAlerts from './PetAlerts';
 export default function PetCard({ pet, selected, onSelect, onEdit, onDelete }) {
   return (
     <div
-      className={`rounded-2xl border p-4 shadow-gold transition-colors ${
+      className={`bento-card-hover ${
         selected
           ? 'border-[#E5C158] bg-[#D4AF37]/10'
           : 'border-[#D4AF37]/30 bg-[#111111]'

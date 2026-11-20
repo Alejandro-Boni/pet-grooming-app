@@ -281,8 +281,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0F0F0F] px-2 py-4 text-white">
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="royal-panel">
+      <div className="bento-grid mb-6">
+        <div className="bento-card md:col-span-6">
           <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">
             Ingresos del mes
           </p>
@@ -327,7 +327,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="royal-panel">
+        <div className="bento-card md:col-span-3">
           <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">
             Clientes frecuentes
           </p>
@@ -341,7 +341,7 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="royal-panel">
+        <div className="bento-card md:col-span-3">
           <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">
             Descuentos automáticos
           </p>
@@ -356,7 +356,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-[#D4AF37]/30 bg-[#111111]/90 p-4 shadow-gold backdrop-blur-md">
+      <div className="bento-card mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#E5C158]">
             Panel administrativo
@@ -374,14 +374,14 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
         {appointments.map((appointment, index) => {
           const nav = getNavigationUrls(appointment);
 
           return (
             <div
               key={appointment.id || index}
-              className="rounded-[24px] border border-[#D4AF37]/30 bg-[#111111] p-4"
+              className="bento-card-hover"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
