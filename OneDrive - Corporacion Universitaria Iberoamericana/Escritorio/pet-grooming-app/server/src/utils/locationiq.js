@@ -8,6 +8,11 @@
 // mucho: el cliente corrige, vuelve atrás, reserva otra mascota...) y cada consulta tiene
 // un timeout (LOCATIONIQ_TIMEOUT_MS, 5 s por defecto). Los errores y las direcciones no encontradas no se guardan.
 const { createTtlCache } = require('./ttl-cache');
+const {
+  isInServiceArea,
+  SERVICE_AREA_VIEWBOX,
+  SERVICE_AREA_ERROR,
+} = require('./service-area');
 
 const LOCATIONIQ_TIMEOUT_MS = Number(process.env.LOCATIONIQ_TIMEOUT_MS) || 5000;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -24,7 +29,8 @@ function createGeocoder({
   async function fetchGeocode(address, apiKey) {
     const url =
       `https://us1.locationiq.com/v1/search?key=${apiKey}` +
-      `&q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=co`;
+      `&q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=co` +
+      `&viewbox=${encodeURIComponent(SERVICE_AREA_VIEWBOX)}&bounded=1`;
 
     let res;
     try {
@@ -44,11 +50,19 @@ function createGeocoder({
 
     const data = await res.json();
     const top = Array.isArray(data) ? data[0] : null;
-    if (!top) throw new Error('No se encontró esa dirección. Intenta ser más específico (calle, número, ciudad).');
+    if (!top) {
+      throw new Error(
+        'No se encontró esa dirección dentro del área de servicio de Bogotá y municipios cercanos. Verifica la dirección e intenta de nuevo.'
+      );
+    }
+
+    const lat = Number(top.lat);
+    const lng = Number(top.lon);
+    if (!isInServiceArea(lat, lng)) throw new Error(SERVICE_AREA_ERROR);
 
     return {
-      lat: Number(top.lat),
-      lng: Number(top.lon),
+      lat,
+      lng,
       formattedAddress: top.display_name || address,
     };
   }

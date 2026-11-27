@@ -18,6 +18,7 @@ const { canCancelAppointment, hasAppointmentPassed } = require('../utils/appoint
 const { splitBlocks } = require('../utils/blackouts');
 const { parseId } = require('../utils/ids');
 const { validateCoords } = require('../utils/validation');
+const { isInServiceArea, SERVICE_AREA_ERROR } = require('../utils/service-area');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -81,6 +82,9 @@ router.post('/', async (req, res) => {
   const coords = validateCoords(lat, lng);
   if (coords.error) {
     return res.status(400).json({ error: coords.error });
+  }
+  if (!isInServiceArea(coords.value.lat, coords.value.lng)) {
+    return res.status(400).json({ error: SERVICE_AREA_ERROR });
   }
 
   const phone = String(clientPhone || '').trim();
