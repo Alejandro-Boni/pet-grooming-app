@@ -29,6 +29,9 @@ export default function BookingFlow() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState(null);
   const [confirmedAppointment, setConfirmedAppointment] = useState(null);
+  const [showTerms, setShowTerms] = useState(false);
+  const [termsViewed, setTermsViewed] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const canContinue =
     step === 1
@@ -74,6 +77,11 @@ export default function BookingFlow() {
   }, [selectedPet?.id, selectedPet?.size, selectedPet?.species]);
 
   async function confirmBooking() {
+    if (!termsAccepted) {
+      setBookingError('Debes leer y aceptar los términos y condiciones antes de agendar.');
+      return;
+    }
+
     if (!location || !selectedSlot || !isValidPhone(phone)) {
       setBookingError('Debes ingresar un número de celular válido antes de agendar.');
       return;
@@ -113,6 +121,9 @@ export default function BookingFlow() {
     setPhone('');
     setBookingError(null);
     setConfirmedAppointment(null);
+    setShowTerms(false);
+    setTermsViewed(false);
+    setTermsAccepted(false);
   }
 
   if (confirmedAppointment) {
@@ -302,6 +313,100 @@ export default function BookingFlow() {
               <p><strong className="text-[#E5C158]">Precio:</strong> {formatPrice(Number(finalPrice))}</p>
             </div>
 
+            <button
+              type="button"
+              onClick={() => {
+                if (!showTerms) setTermsViewed(true);
+                setShowTerms(!showTerms);
+              }}
+              aria-expanded={showTerms}
+              aria-controls="booking-terms"
+              className="mt-6 w-full rounded-xl border border-[#D4AF37]/50 px-4 py-3 text-left font-semibold text-[#E5C158] hover:bg-[#D4AF37]/10"
+            >
+              {showTerms ? 'Ocultar términos y condiciones' : 'Leer términos y condiciones'}
+            </button>
+
+            {showTerms && (
+              <section
+                id="booking-terms"
+                aria-label="Términos y condiciones de servicio"
+                className="mt-3 max-h-80 space-y-4 overflow-y-auto rounded-xl border border-[#D4AF37]/30 bg-[#0F0F0F] p-4 text-sm leading-relaxed text-[#F1E5C5]"
+              >
+                <h3 className="font-display text-lg text-white">
+                  Términos y Condiciones de Servicio – Mascota Rey
+                </h3>
+                <div>
+                  <h4 className="font-semibold text-[#E5C158]">
+                    1. Estado físico y de salud de la mascota
+                  </h4>
+                  <p className="mt-1">
+                    El propietario declara bajo su entera responsabilidad que el canino o felino
+                    se encuentra en condiciones óptimas de salud para recibir el servicio de
+                    estética. Mascota Rey no asume responsabilidad por lesiones, irritaciones o
+                    incidentes derivados de nudos excesivos, mantos gravemente enmarañados,
+                    descuidos higiénicos prolongados o patologías previas ocultas (problemas de
+                    piel, orejas o dentadura) cuyo estado crítico obligue al personal a realizar
+                    maniobras delicadas para evitar un daño mayor. El propietario acepta que un
+                    pelaje en mal estado incrementa el riesgo operacional durante el procedimiento.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-[#E5C158]">
+                    2. Ejemplares Caninos de Manejo Especial
+                  </h4>
+                  <p className="mt-1">
+                    En cumplimiento del Código Nacional de Seguridad y Convivencia Ciudadana
+                    (Ley 1801 de 2016), los propietarios de perros considerados de manejo especial
+                    o razas de potencial riesgo están obligados a portar y utilizar bozal, traílla
+                    y elementos de sujeción reglamentarios durante su ingreso, permanencia y salida
+                    de las instalaciones, respondiendo civil y penalmente por cualquier daño que el
+                    animal pueda ocasionar a terceros o al personal.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-[#E5C158]">
+                    3. Puntualidad y Política de Recogida
+                  </h4>
+                  <p className="mt-1">
+                    El cliente se compromete a recoger a su mascota dentro de los quince (15)
+                    minutos siguientes a la notificación de finalización del servicio vía WhatsApp.
+                    Superado este tiempo de gracia, se aplicará automáticamente un recargo único
+                    de $5.000 COP por concepto de estadía y cuidado temporal prolongado.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-[#E5C158]">4. Aceptación previa</h4>
+                  <p className="mt-1">
+                    Al marcar la casilla de aceptación y agendar la cita en la plataforma, el
+                    usuario manifiesta que ha leído, comprendido y aceptado la totalidad de estas
+                    condiciones operativas y legales.
+                  </p>
+                </div>
+              </section>
+            )}
+
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/30 bg-[#0F0F0F] p-4 text-sm text-[#F1E5C5]">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                disabled={!termsViewed}
+                onChange={(event) => {
+                  setTermsAccepted(event.target.checked);
+                  if (event.target.checked) setBookingError(null);
+                }}
+                className="mt-0.5 h-4 w-4 accent-[#D4AF37] disabled:cursor-not-allowed"
+              />
+              <span>
+                He leído, comprendido y acepto los términos y condiciones de servicio de Mascota
+                Rey.
+                {!termsViewed && (
+                  <span className="mt-1 block text-xs text-[#F1E5C5]/60">
+                    Primero abre el botón de términos y condiciones para continuar.
+                  </span>
+                )}
+              </span>
+            </label>
+
             {bookingError && (
               <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
                 {bookingError}
@@ -311,8 +416,8 @@ export default function BookingFlow() {
             <button
               type="button"
               onClick={confirmBooking}
-              disabled={isBooking}
-              className="mt-6 w-full rounded-full bg-[#D4AF37] px-4 py-3 font-semibold text-[#0F0F0F]"
+              disabled={isBooking || !termsAccepted}
+              className="mt-6 w-full rounded-full bg-[#D4AF37] px-4 py-3 font-semibold text-[#0F0F0F] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isBooking ? 'Agendando...' : 'Confirmar cita'}
             </button>
@@ -322,7 +427,14 @@ export default function BookingFlow() {
         <div className="mt-6 flex justify-between">
           <button
             type="button"
-            onClick={() => setStep((prev) => Math.max(prev - 1, 1))}
+            onClick={() => {
+              if (step === 4) {
+                setTermsAccepted(false);
+                setShowTerms(false);
+                setTermsViewed(false);
+              }
+              setStep((prev) => Math.max(prev - 1, 1));
+            }}
             disabled={step === 1}
             className="rounded-full border border-[#D4AF37]/40 px-4 py-2 text-sm text-white disabled:opacity-40"
           >

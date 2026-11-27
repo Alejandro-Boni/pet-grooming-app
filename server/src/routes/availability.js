@@ -6,6 +6,7 @@ const { availabilityLimiter } = require('../middleware/rateLimit');
 const { parseId } = require('../utils/ids');
 const { isValidDateString } = require('../utils/time');
 const { validateCoords } = require('../utils/validation');
+const { isInServiceArea, SERVICE_AREA_ERROR } = require('../utils/service-area');
 
 const router = asyncRouter();
 
@@ -26,6 +27,9 @@ router.get('/', requireAuth, availabilityLimiter, async (req, res) => {
   }
   const coords = validateCoords(lat, lng);
   if (coords.error) return res.status(400).json({ error: coords.error });
+  if (!isInServiceArea(coords.value.lat, coords.value.lng)) {
+    return res.status(400).json({ error: SERVICE_AREA_ERROR });
+  }
 
   const petRes = await pool.query(
     'SELECT size FROM pets WHERE id = $1 AND owner_id = $2 AND deleted_at IS NULL',

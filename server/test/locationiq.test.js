@@ -42,6 +42,16 @@ test('geocodifica y devuelve lat/lng numéricos', async () => {
   });
 });
 
+test('limita la búsqueda a Bogotá y rechaza resultados fuera del área de servicio', async () => {
+  const { geocoder, calls } = build(async () => ({
+    ok: true,
+    json: async () => [{ lat: '6.2442', lon: '-75.5812', display_name: 'Medellín, Colombia' }],
+  }));
+  await assert.rejects(geocoder.geocodeAddress('Calle 10'), /Solo se pueden agendar servicios/);
+  assert.match(calls[0], /viewbox=-74\.32%2C4\.98%2C-73\.85%2C4\.45/);
+  assert.match(calls[0], /bounded=1/);
+});
+
 test('la misma dirección (con distinto formato) se consulta una sola vez', async () => {
   const { geocoder, calls } = build(async () => ({ ok: true, json: async () => hit }));
   await geocoder.geocodeAddress('Calle 100 #15-20');
