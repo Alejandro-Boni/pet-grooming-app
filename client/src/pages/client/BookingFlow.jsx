@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import StepIndicator from '../../components/StepIndicator';
@@ -16,6 +16,7 @@ function isValidPhone(phone) {
 
 export default function BookingFlow() {
   const [step, setStep] = useState(1);
+  const nextButtonRef = useRef(null);
   const [pets, setPets] = useState([]);
   const [petsError, setPetsError] = useState(null);
   const [services, setServices] = useState([]);
@@ -48,6 +49,20 @@ export default function BookingFlow() {
       .then((data) => setPets(data.pets))
       .catch((err) => setPetsError(err.message || 'No se pudieron cargar tus mascotas.'));
   }, []);
+
+  useEffect(() => {
+    if (step !== 2 || !selectedService) return undefined;
+
+    const timer = window.setTimeout(() => {
+      nextButtonRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [step, selectedService]);
 
   useEffect(() => {
     if (!selectedPet) {
@@ -442,13 +457,14 @@ export default function BookingFlow() {
           </button>
 
           <button
+            ref={nextButtonRef}
             type="button"
             onClick={() => {
               setBookingError(null);
               setStep((prev) => Math.min(prev + 1, 4));
             }}
             disabled={!canContinue}
-            className="rounded-full bg-[#D4AF37] px-4 py-2 text-sm font-semibold text-[#0F0F0F] disabled:opacity-40"
+            className="scroll-mb-24 rounded-full bg-[#D4AF37] px-4 py-2 text-sm font-semibold text-[#0F0F0F] disabled:opacity-40"
           >
             Siguiente
           </button>

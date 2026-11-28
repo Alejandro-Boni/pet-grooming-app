@@ -2,8 +2,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const TABS = [
-  { to: '/app', label: 'Agendar', end: true },
-  { to: '/app/mascotas', label: 'Mis mascotas' },
+  { to: '/app/mascotas', label: 'Mis mascotas', end: true },
+  { to: '/app/agendar', label: 'Agendar' },
   { to: '/app/citas', label: 'Mis citas' },
   { to: '/app/resenas', label: 'Reseñas' },
   { to: '/app/nosotros', label: 'Nosotros' },
