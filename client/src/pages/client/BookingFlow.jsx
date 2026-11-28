@@ -7,7 +7,7 @@ import AddressInput from '../../components/AddressInput';
 import AvailabilityCalendar from '../../components/AvailabilityCalendar';
 import { formatPrice, formatDate, formatTime } from '../../utils/format';
 
-const STEPS = ['Mascota', 'Servicio', 'Dirección y horario', 'Confirmación'];
+const STEPS = ['Mascota', 'Servicios', 'Dirección y horario', 'Confirmación'];
 
 function isValidPhone(phone) {
   const digits = phone.replace(/\D/g, '');
@@ -23,7 +23,7 @@ export default function BookingFlow() {
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState(null);
   const [selectedPet, setSelectedPet] = useState(null);
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedServices, setSelectedServices] = useState([]);
   const [location, setLocation] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [phone, setPhone] = useState('');
@@ -34,11 +34,21 @@ export default function BookingFlow() {
   const [termsViewed, setTermsViewed] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
+  const selectedServiceIds = selectedServices.map((service) => service.id);
+  const totalPrice = selectedServices.reduce(
+    (total, service) => total + Number(service.final_price_cop ?? service.price_cop ?? 0),
+    0
+  );
+  const totalDurationMinutes = selectedServices.reduce(
+    (total, service) => total + Number(service.duration_minutes ?? 0),
+    0
+  );
+
   const canContinue =
     step === 1
       ? Boolean(selectedPet)
       : step === 2
-        ? Boolean(selectedService)
+        ? selectedServices.length > 0
         : step === 3
           ? Boolean(location && selectedSlot && isValidPhone(phone))
           : false;
@@ -51,7 +61,7 @@ export default function BookingFlow() {
   }, []);
 
   useEffect(() => {
-    if (step !== 2 || !selectedService) return undefined;
+    if (step !== 2 || selectedServices.length === 0) return undefined;
 
     const timer = window.setTimeout(() => {
       nextButtonRef.current?.scrollIntoView({
@@ -62,7 +72,7 @@ export default function BookingFlow() {
     }, 120);
 
     return () => window.clearTimeout(timer);
-  }, [step, selectedService]);
+  }, [step, selectedServices]);
 
   useEffect(() => {
     if (!selectedPet) {
@@ -108,7 +118,7 @@ export default function BookingFlow() {
     try {
       const { appointment } = await api.post('/api/appointments', {
         petId: selectedPet.id,
-        serviceId: selectedService.id,
+        serviceIds: selectedServiceIds,
         address: location.address,
         lat: location.lat,
         lng: location.lng,
@@ -125,12 +135,10 @@ export default function BookingFlow() {
     }
   }
 
-  const finalPrice = selectedService?.final_price_cop ?? selectedService?.price_cop ?? 0;
-
   function resetBooking() {
     setStep(1);
     setSelectedPet(null);
-    setSelectedService(null);
+    setSelectedServices([]);
     setLocation(null);
     setSelectedSlot(null);
     setPhone('');
@@ -152,7 +160,9 @@ export default function BookingFlow() {
               <p className="mt-2 font-display text-2xl text-white">{selectedPet.name}</p>
 
               <p className="mt-5 text-sm uppercase tracking-[0.2em] text-[#E5C158]">Servicio</p>
-              <p className="mt-2 text-lg text-[#F1E5C5]">{selectedService.name}</p>
+              <p className="mt-2 text-lg text-[#F1E5C5]">
+                {selectedServices.map((service) => service.name).join(', ')}
+              </p>
 
               <p className="mt-5 text-sm uppercase tracking-[0.2em] text-[#E5C158]">Fecha y hora</p>
               <p className="mt-2 text-lg capitalize text-[#F1E5C5]">
@@ -170,7 +180,7 @@ export default function BookingFlow() {
 
               <p className="mt-5 text-sm uppercase tracking-[0.2em] text-[#E5C158]">Precio</p>
               <p className="mt-2 text-lg font-semibold text-[#E5C158]">
-                {formatPrice(Number(finalPrice))}
+                {formatPrice(Number(confirmedAppointment.final_price_cop ?? totalPrice))}
               </p>
             </div>
 
@@ -215,7 +225,7 @@ export default function BookingFlow() {
                 revealDelay={index * 70}
                 onSelect={() => {
                   setSelectedPet(pet);
-                  setSelectedService(null);
+                  setSelectedServices([]);
                   setSelectedSlot(null);
                 }}
               />
@@ -225,6 +235,9 @@ export default function BookingFlow() {
 
         {step === 2 && (
           <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <p className="text-sm text-[#F1E5C5]/75 md:col-span-2">
+              Puedes seleccionar uno o varios servicios. Toca de nuevo un servicio para quitarlo.
+            </p>
             {servicesError && (
               <p className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
                 {servicesError}
@@ -244,12 +257,17 @@ export default function BookingFlow() {
               <button
                 key={service.id}
                 type="button"
+                aria-pressed={selectedServices.some((selected) => selected.id === service.id)}
                 onClick={() => {
-                  setSelectedService(service);
+                  setSelectedServices((current) =>
+                    current.some((selected) => selected.id === service.id)
+                      ? current.filter((selected) => selected.id !== service.id)
+                      : [...current, service]
+                  );
                   setSelectedSlot(null);
                 }}
                 className={`bento-reveal-item w-full rounded-2xl border p-4 text-left ${
-                  selectedService?.id === service.id
+                  selectedServices.some((selected) => selected.id === service.id)
                     ? 'border-[#E5C158] bg-[#D4AF37]/10 shadow-gold'
                     : 'border-[#D4AF37]/30 bg-[#111111] shadow-gold'
                 }`}
@@ -260,8 +278,22 @@ export default function BookingFlow() {
                 <p className="mt-2 text-[#E5C158]">
                   {formatPrice(service.final_price_cop ?? service.price_cop)}
                 </p>
+                <p className="mt-1 text-xs text-[#F1E5C5]/70">
+                  Duración: {service.duration_minutes} min
+                </p>
               </button>
             ))}
+            {selectedServices.length > 0 && (
+              <div className="rounded-2xl border border-[#D4AF37]/40 bg-[#111111] p-4 text-sm text-[#F1E5C5] md:col-span-2">
+                <p className="font-semibold text-[#E5C158]">
+                  {selectedServices.length} servicio{selectedServices.length === 1 ? '' : 's'} seleccionado
+                  {selectedServices.length === 1 ? '' : 's'}
+                </p>
+                <p className="mt-1">
+                  Total: {formatPrice(totalPrice)} · Duración aproximada: {totalDurationMinutes} min
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -305,7 +337,7 @@ export default function BookingFlow() {
             <div className="bento-reveal-item" style={{ '--reveal-delay': '140ms' }}>
               <AvailabilityCalendar
                 petId={selectedPet?.id}
-                serviceId={selectedService?.id}
+                serviceIds={selectedServiceIds}
                 lat={location?.lat}
                 lng={location?.lng}
                 onSelectSlot={setSelectedSlot}
@@ -320,12 +352,16 @@ export default function BookingFlow() {
 
             <div className="mt-4 space-y-2 text-sm">
               <p><strong className="text-[#E5C158]">Mascota:</strong> {selectedPet?.name}</p>
-              <p><strong className="text-[#E5C158]">Servicio:</strong> {selectedService?.name}</p>
+              <p>
+                <strong className="text-[#E5C158]">Servicios:</strong>{' '}
+                {selectedServices.map((service) => service.name).join(', ')}
+              </p>
               <p><strong className="text-[#E5C158]">Dirección:</strong> {location?.address}</p>
               <p><strong className="text-[#E5C158]">Fecha:</strong> {selectedSlot?.date}</p>
               <p><strong className="text-[#E5C158]">Hora:</strong> {selectedSlot?.time}</p>
               <p><strong className="text-[#E5C158]">Celular:</strong> {phone}</p>
-              <p><strong className="text-[#E5C158]">Precio:</strong> {formatPrice(Number(finalPrice))}</p>
+              <p><strong className="text-[#E5C158]">Precio total:</strong> {formatPrice(totalPrice)}</p>
+              <p><strong className="text-[#E5C158]">Duración aproximada:</strong> {totalDurationMinutes} min</p>
             </div>
 
             <button

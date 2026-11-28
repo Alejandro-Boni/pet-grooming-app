@@ -19,7 +19,8 @@ function isPastSlot(dateKey, slot) {
   return slotDate.getTime() < Date.now();
 }
 
-export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSelectSlot }) {
+export default function AvailabilityCalendar({ petId, serviceIds = [], lat, lng, onSelectSlot }) {
+  const serviceIdsKey = serviceIds.join(',');
   const days = useMemo(() => {
     const today = new Date();
     return Array.from({ length: 14 }, (_, i) => {
@@ -34,6 +35,7 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [durationMinutes, setDurationMinutes] = useState(null);
 
   useEffect(() => {
     // `active` descarta respuestas de peticiones viejas: si el usuario cambia de día (o de
@@ -42,7 +44,7 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
 
     if (
       !petId ||
-      !serviceId ||
+      !serviceIdsKey ||
       lat === null ||
       lat === undefined ||
       lng === null ||
@@ -52,6 +54,7 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
       setSlots([]);
       setSelectedSlot(null);
       setIsLoading(false);
+      setDurationMinutes(null);
       onSelectSlot?.(null);
       return () => {
         active = false;
@@ -62,14 +65,18 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
     setError(null);
     setSlots([]);
     setSelectedSlot(null);
+    setDurationMinutes(null);
     onSelectSlot?.(null);
 
     api
-      .get(`/api/availability?date=${selectedDate}&serviceId=${serviceId}&petId=${petId}&lat=${lat}&lng=${lng}`)
+      .get(
+        `/api/availability?date=${selectedDate}&serviceIds=${encodeURIComponent(serviceIdsKey)}&petId=${petId}&lat=${lat}&lng=${lng}`
+      )
       .then((data) => {
         if (!active) return;
         const validSlots = (data.slots || []).filter((slot) => !isPastSlot(selectedDate, slot));
         setSlots(validSlots);
+        setDurationMinutes(data.durationMinutes);
       })
       .catch((err) => {
         if (active) setError(err.message);
@@ -81,7 +88,7 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
     return () => {
       active = false;
     };
-  }, [petId, serviceId, lat, lng, selectedDate]);
+  }, [petId, serviceIdsKey, lat, lng, selectedDate]);
 
   return (
     <div>
@@ -108,6 +115,12 @@ export default function AvailabilityCalendar({ petId, serviceId, lat, lng, onSel
       </div>
 
       <div className="mt-4">
+        {durationMinutes && (
+          <p className="mb-3 text-sm text-[#F1E5C5]/75">
+            Horarios calculados para {durationMinutes} minutos de servicio, considerando los
+            traslados según la ubicación.
+          </p>
+        )}
         {isLoading && <p className="text-sm text-[#F1E5C5]">Buscando horarios disponibles…</p>}
         {error && <p className="text-sm text-red-300">{error}</p>}
         {!isLoading && !error && slots.length === 0 && (

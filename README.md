@@ -128,8 +128,9 @@ proveedor tiene configurada una variable `NODE_VERSION`, debe ser 22 (o quitarla
 **Orden recomendado al desplegar cambios de base de datos:** primero `npm run migrate` contra la
 base de producción y después el despliegue del código. Las migraciones están en
 `server/src/db/migrations/` y se registran en la tabla `schema_migrations`, así que cada una se
-aplica una sola vez. Si lo haces al revés, las rutas que usan columnas nuevas darán error hasta
-que corras la migración. Si prefieres tener
+aplica una sola vez. La migración `006_appointment_services.sql` conserva los servicios de las
+citas existentes y permite asociar varios servicios a una misma cita. Si lo haces al revés, las
+rutas que usan la nueva tabla darán error hasta que corras la migración. Si prefieres tener
 todo en Vercel, la alternativa es adaptar las rutas de `server/src/routes` a funciones
 serverless de Vercel y usar una base de datos Postgres con pooler para serverless, como
 **Neon** o **Vercel Postgres** — avísame si quieres que prepare esa variante.

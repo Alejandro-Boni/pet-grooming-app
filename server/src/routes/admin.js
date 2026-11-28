@@ -37,10 +37,16 @@ router.get('/reports/monthly-income', async (req, res) => {
              COALESCE(a.late_pickup_fee_cop, 0))::integer AS amount_cop,
             COALESCE(u.name, u.email, 'Cliente') AS client_name,
             p.name AS pet_name,
-            s.name AS service_name
+            COALESCE(selected_services.service_name, s.name) AS service_name
      FROM appointments a
      JOIN pets p ON p.id = a.pet_id
      JOIN services s ON s.id = a.service_id
+     LEFT JOIN LATERAL (
+       SELECT STRING_AGG(selected_service.name, ', ' ORDER BY appointment_service.position) AS service_name
+       FROM appointment_services appointment_service
+       JOIN services selected_service ON selected_service.id = appointment_service.service_id
+       WHERE appointment_service.appointment_id = a.id
+     ) selected_services ON true
      JOIN users u ON u.id = a.client_id
      WHERE a.appointment_date >= $1::date
        AND a.appointment_date < ($1::date + INTERVAL '1 month')
@@ -89,12 +95,19 @@ router.get('/appointments', async (req, res) => {
             END AS display_status,
             p.name AS pet_name, p.species, p.breed, p.size,
             p.is_reactive, p.is_allergic, p.allergy_notes, p.is_geriatric, p.medical_conditions,
-            s.name AS service_name, s.price_cop,
+            COALESCE(selected_services.service_name, s.name) AS service_name,
+            COALESCE(NULLIF(a.final_price_cop, 0), s.price_cop, 0) AS service_price_cop,
             u.name AS client_name,
             COALESCE(a.client_phone, u.phone) AS client_phone
      FROM appointments a
      JOIN pets p ON p.id = a.pet_id
      JOIN services s ON s.id = a.service_id
+     LEFT JOIN LATERAL (
+       SELECT STRING_AGG(selected_service.name, ', ' ORDER BY appointment_service.position) AS service_name
+       FROM appointment_services appointment_service
+       JOIN services selected_service ON selected_service.id = appointment_service.service_id
+       WHERE appointment_service.appointment_id = a.id
+     ) selected_services ON true
      JOIN users u ON u.id = a.client_id
      WHERE a.appointment_date = $1
      ORDER BY a.start_time`,
@@ -185,11 +198,18 @@ router.post('/appointments/:id/record-pickup', async (req, res) => {
     const appointmentRes = await client.query(
       `SELECT a.*, p.name AS pet_name, u.name AS client_name,
               COALESCE(a.client_phone, u.phone) AS contact_phone,
-              s.name AS service_name, s.price_cop AS service_price_cop
+              COALESCE(selected_services.service_name, s.name) AS service_name,
+              COALESCE(NULLIF(a.final_price_cop, 0), s.price_cop, 0) AS service_price_cop
        FROM appointments a
        JOIN pets p ON p.id = a.pet_id
        JOIN users u ON u.id = a.client_id
        JOIN services s ON s.id = a.service_id
+       LEFT JOIN LATERAL (
+         SELECT STRING_AGG(selected_service.name, ', ' ORDER BY appointment_service.position) AS service_name
+         FROM appointment_services appointment_service
+         JOIN services selected_service ON selected_service.id = appointment_service.service_id
+         WHERE appointment_service.appointment_id = a.id
+       ) selected_services ON true
        WHERE a.id = $1
        FOR UPDATE OF a`,
       [appointmentId]
@@ -428,7 +448,9 @@ router.get('/clients/:clientId/history', async (req, res) => {
   }
 
   const result = await pool.query(
-    `SELECT a.*, p.name AS pet_name, s.name AS service_name, s.price_cop,
+    `SELECT a.*, p.name AS pet_name,
+            COALESCE(selected_services.service_name, s.name) AS service_name,
+            COALESCE(NULLIF(a.final_price_cop, 0), s.price_cop, 0) AS service_price_cop,
             CASE
               WHEN a.status = 'pending'
                 AND (a.appointment_date + a.end_time) <= (NOW() AT TIME ZONE 'America/Bogota')
@@ -438,6 +460,12 @@ router.get('/clients/:clientId/history', async (req, res) => {
      FROM appointments a
      JOIN pets p ON p.id = a.pet_id
      JOIN services s ON s.id = a.service_id
+     LEFT JOIN LATERAL (
+       SELECT STRING_AGG(selected_service.name, ', ' ORDER BY appointment_service.position) AS service_name
+       FROM appointment_services appointment_service
+       JOIN services selected_service ON selected_service.id = appointment_service.service_id
+       WHERE appointment_service.appointment_id = a.id
+     ) selected_services ON true
      WHERE a.client_id = $1
      ORDER BY a.appointment_date DESC, a.start_time DESC`,
     [clientId]

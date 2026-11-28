@@ -434,6 +434,7 @@ export default function Dashboard() {
                     {currencyFormatter.format(
                       Number(
                         appointment.final_price_cop ||
+                          appointment.service_price_cop ||
                           appointment.price_cop ||
                           0
                       )
@@ -475,6 +476,7 @@ export default function Dashboard() {
                               {currencyFormatter.format(
                                 Number(
                                   appointment.final_price_cop ||
+                                    appointment.service_price_cop ||
                                     appointment.price_cop ||
                                     0
                                 ) + Number(appointment.late_pickup_fee_cop || 0)
