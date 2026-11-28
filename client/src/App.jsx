@@ -49,7 +49,8 @@ function AppRoutes() {
           </RequireAuth>
         }
       >
-        <Route index element={<BookingFlow />} />
+        <Route index element={<Navigate to="mascotas" replace />} />
+        <Route path="agendar" element={<BookingFlow />} />
         <Route path="mascotas" element={<MyPets />} />
         <Route path="citas" element={<MyAppointments />} />
         <Route path="nosotros" element={<AboutUs />} />

@@ -25,7 +25,7 @@ export default function Login() {
 
       const { user } = await api.get('/api/auth/me');
       playRoyalPageTransition(() => {
-        navigate(user.role === 'admin' ? '/admin' : '/app');
+        navigate(user.role === 'admin' ? '/admin' : '/app/mascotas');
       });
     } catch (err) {
       setSubmitError(err.message || 'No se pudo completar la solicitud. Inténtalo de nuevo.');
