@@ -52,7 +52,6 @@ export default function Dashboard() {
   );
   const [appointments, setAppointments] = useState([]);
   const [monthlyIncome, setMonthlyIncome] = useState(0);
-  const [frequentCustomers, setFrequentCustomers] = useState(0);
   const [automaticDiscounts, setAutomaticDiscounts] = useState(0);
   const [incomeMonth, setIncomeMonth] = useState(() =>
     new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' })
@@ -86,7 +85,6 @@ export default function Dashboard() {
       setIsMonthlyReportLoaded(false);
       setMonthlyAppointments([]);
       setMonthlyIncome(0);
-      setFrequentCustomers(0);
       setIncomeError('');
       try {
         const [settingsResult, report] = await Promise.all([
@@ -106,9 +104,6 @@ export default function Dashboard() {
         );
         setMonthlyAppointments(list);
         setMonthlyIncome(Number(report.total_income || 0));
-        setFrequentCustomers(
-          new Set(list.map((appointment) => appointment.client_id)).size
-        );
         setIsMonthlyReportLoaded(true);
       } catch (err) {
         if (active) {
@@ -279,6 +274,22 @@ export default function Dashboard() {
     });
   }, [incomeMonth]);
 
+  const frequentCustomerNames = useMemo(() => {
+    const customers = new Map();
+    monthlyAppointments.forEach((appointment) => {
+      if (!customers.has(appointment.client_id)) {
+        customers.set(appointment.client_id, {
+          id: appointment.client_id,
+          name: appointment.client_name || 'Cliente',
+        });
+      }
+    });
+    return [...customers.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, 'es')
+    );
+  }, [monthlyAppointments]);
+  const frequentCustomers = frequentCustomerNames.length;
+
   return (
     <div className="min-h-screen bg-[#0F0F0F] px-2 py-4 text-white">
       <div className="bento-grid mb-6">
@@ -335,10 +346,21 @@ export default function Dashboard() {
             {frequentCustomers}
           </h2>
           <p className="mt-2 text-sm text-[#F1E5C5]">
-            {frequentCustomers === 0
-              ? 'Aún no hay clientes frecuentes.'
-              : 'Clientes con retención activa.'}
+            {incomeError
+              ? 'No se pudieron cargar los clientes.'
+              : isLoadingIncome
+                ? 'Cargando clientes del mes...'
+                : frequentCustomers === 0
+                  ? `Aún no hay clientes con citas terminadas en ${monthLabel}.`
+                  : `Clientes con citas terminadas en ${monthLabel}.`}
           </p>
+          {frequentCustomerNames.length > 0 && (
+            <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto text-sm text-white">
+              {frequentCustomerNames.map((name) => (
+                <li key={name.id}>{name.name}</li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="bento-card md:col-span-3">
