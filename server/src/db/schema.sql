@@ -84,6 +84,16 @@ CREATE TABLE IF NOT EXISTS appointments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS appointment_services (
+  appointment_id INTEGER NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
+  service_id INTEGER NOT NULL REFERENCES services(id),
+  position INTEGER NOT NULL CHECK (position > 0),
+  service_price_cop INTEGER NOT NULL CHECK (service_price_cop >= 0),
+  duration_minutes INTEGER NOT NULL CHECK (duration_minutes > 0),
+  PRIMARY KEY (appointment_id, service_id),
+  UNIQUE (appointment_id, position)
+);
+
 ALTER TABLE appointments
   ADD COLUMN IF NOT EXISTS client_phone TEXT;
 

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseId } = require('../src/utils/ids');
+const { parseId, parseIdList } = require('../src/utils/ids');
 
 test('acepta enteros positivos (string o número)', () => {
   assert.equal(parseId('7'), 7);
@@ -14,4 +14,11 @@ test('rechaza todo lo demás', () => {
     '2147483648', '99999999999', '12abc', '0x10']) {
     assert.equal(parseId(bad), null, `debería rechazar ${JSON.stringify(bad)}`);
   }
+});
+
+test('parsea listas de ids sin permitir valores inválidos o duplicados', () => {
+  assert.deepEqual(parseIdList(['7', 12]), [7, 12]);
+  assert.equal(parseIdList([]), null);
+  assert.equal(parseIdList(['7', '7']), null);
+  assert.equal(parseIdList(['7', 'abc']), null);
 });

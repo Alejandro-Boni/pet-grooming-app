@@ -16,9 +16,10 @@ const { calculateServicePrice } = require('../utils/pricing');
 const { isServiceAvailableForPet } = require('../utils/service-rules');
 const { canCancelAppointment, hasAppointmentPassed } = require('../utils/appointment-rules');
 const { splitBlocks } = require('../utils/blackouts');
-const { parseId } = require('../utils/ids');
+const { parseId, parseIdList } = require('../utils/ids');
 const { validateCoords } = require('../utils/validation');
 const { isInServiceArea, SERVICE_AREA_ERROR } = require('../utils/service-area');
+const { calculateServiceTotals } = require('../utils/service-selection');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -50,6 +51,7 @@ router.post('/', async (req, res) => {
   const {
     petId: rawPetId,
     serviceId: rawServiceId,
+    serviceIds: rawServiceIds,
     date,
     startTime,
     address,
@@ -57,10 +59,13 @@ router.post('/', async (req, res) => {
     lng,
     clientPhone,
   } = req.body;
+  const serviceIds = parseIdList(
+    rawServiceIds === undefined ? [rawServiceId] : rawServiceIds
+  );
 
   if (
     !rawPetId ||
-    !rawServiceId ||
+    !serviceIds ||
     !date ||
     !startTime ||
     !address ||
@@ -69,13 +74,12 @@ router.post('/', async (req, res) => {
   ) {
     return res.status(400).json({
       error:
-        'petId, serviceId, date, startTime, address, lat y lng son requeridos',
+        'petId, serviceIds, date, startTime, address, lat y lng son requeridos',
     });
   }
 
   const petId = parseId(rawPetId);
-  const serviceId = parseId(rawServiceId);
-  if (!petId || !serviceId) {
+  if (!petId) {
     return res.status(400).json({ error: 'La mascota o el servicio indicados no son válidos' });
   }
 
@@ -132,32 +136,24 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Mascota no encontrada' });
     }
 
-    const serviceRes = await client.query(
-      'SELECT * FROM services WHERE id = $1 AND active = true',
-      [serviceId]
+    const servicesRes = await client.query(
+      'SELECT * FROM services WHERE id = ANY($1::int[]) AND active = true',
+      [serviceIds]
     );
-    const service = serviceRes.rows[0];
+    const servicesById = new Map(servicesRes.rows.map((service) => [service.id, service]));
+    const services = serviceIds.map((id) => servicesById.get(id));
 
-    if (!service) {
-      return res.status(404).json({ error: 'Servicio no encontrado' });
+    if (services.some((service) => !service)) {
+      return res.status(404).json({ error: 'Uno o más servicios no fueron encontrados' });
     }
 
-    if (!isServiceAvailableForPet(service, pet)) {
+    if (services.some((service) => !isServiceAvailableForPet(service, pet))) {
       return res.status(400).json({
-        error: 'El servicio seleccionado no está disponible para el tipo o tamaño de tu mascota.',
+        error: 'Uno o más servicios no están disponibles para el tipo o tamaño de tu mascota.',
       });
     }
 
-    const finalPriceCop = calculateServicePrice(
-      service.price_cop,
-      pet.size,
-      service.name
-    );
-    const durationMinutes = calculateDurationMinutes(
-      service.base_duration_minutes,
-      pet.size,
-      service.name
-    );
+    const { finalPriceCop, durationMinutes } = calculateServiceTotals(services, pet.size);
     const endMin = startMin + durationMinutes;
     const endTime = minutesToTime(endMin);
 
@@ -328,7 +324,7 @@ router.post('/', async (req, res) => {
       [
         req.user.id,
         petId,
-        serviceId,
+        serviceIds[0],
         address,
         coords.value.lat,
         coords.value.lng,
@@ -340,6 +336,27 @@ router.post('/', async (req, res) => {
       ]
     );
 
+    for (let index = 0; index < services.length; index += 1) {
+      const service = services[index];
+      await client.query(
+        `INSERT INTO appointment_services (
+           appointment_id, service_id, position, service_price_cop, duration_minutes
+         )
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          inserted.rows[0].id,
+          service.id,
+          index + 1,
+          calculateServicePrice(service.price_cop, pet.size, service.name),
+          calculateDurationMinutes(
+            service.base_duration_minutes,
+            pet.size,
+            service.name
+          ),
+        ]
+      );
+    }
+
     await client.query('COMMIT');
     transactionStarted = false;
 
@@ -348,6 +365,7 @@ router.post('/', async (req, res) => {
         ...inserted.rows[0],
         final_price_cop: finalPriceCop,
         client_phone: phone,
+        service_names: services.map((service) => service.name),
       },
       final_price_cop: finalPriceCop,
     });
@@ -370,8 +388,7 @@ router.get('/mine', async (req, res) => {
     const result = await pool.query(
       `SELECT a.*,
               p.name AS pet_name,
-              s.name AS service_name,
-              s.price_cop,
+              COALESCE(selected_services.service_name, s.name) AS service_name,
               r.id AS review_id,
               r.rating AS review_rating,
               r.comment AS review_comment,
@@ -386,6 +403,12 @@ router.get('/mine', async (req, res) => {
        FROM appointments a
        JOIN pets p ON p.id = a.pet_id
        JOIN services s ON s.id = a.service_id
+       LEFT JOIN LATERAL (
+         SELECT STRING_AGG(selected_service.name, ', ' ORDER BY appointment_service.position) AS service_name
+         FROM appointment_services appointment_service
+         JOIN services selected_service ON selected_service.id = appointment_service.service_id
+         WHERE appointment_service.appointment_id = a.id
+       ) selected_services ON true
        JOIN users u ON u.id = a.client_id
        LEFT JOIN reviews r ON r.appointment_id = a.id
        WHERE a.client_id = $1

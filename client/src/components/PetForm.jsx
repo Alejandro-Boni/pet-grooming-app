@@ -121,6 +121,14 @@ export default function PetForm({ initialPet, onSubmit, onCancel, isSaving }) {
           Ficha de comportamiento y salud
         </legend>
 
+        {!initialPet && (
+          <p className="mt-2 text-xs text-[#F1E5C5]/75">
+            Marca solo lo que aplique. Si tu mascota no tiene alergias, no es geriátrica ni presenta
+            nerviosismo o reactividad, deja las casillas sin marcar. Si tiene una condición médica,
+            descríbela abajo.
+          </p>
+        )}
+
         <div className="mt-3 space-y-3">
           <label className="flex items-center gap-2 text-sm text-[#F1E5C5]">
             <input

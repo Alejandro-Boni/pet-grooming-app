@@ -2,6 +2,7 @@ const { asyncRouter } = require('../utils/asyncRouter');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { calculateServicePrice } = require('../utils/pricing');
+const { calculateDurationMinutes } = require('../utils/duration');
 const { isServiceAvailableForPet } = require('../utils/service-rules');
 const { parseId } = require('../utils/ids');
 
@@ -33,6 +34,11 @@ router.get('/', requireAuth, async (req, res) => {
     .map((service) => ({
       ...service,
       final_price_cop: calculateServicePrice(service.price_cop, pet.size, service.name),
+      duration_minutes: calculateDurationMinutes(
+        service.base_duration_minutes,
+        pet.size,
+        service.name
+      ),
     }));
 
   return res.json({ services });

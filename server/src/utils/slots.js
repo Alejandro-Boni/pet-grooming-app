@@ -1,5 +1,6 @@
 const pool = require('../db/pool');
-const { calculateDurationMinutes, SLOT_GRANULARITY_MINUTES } = require('./duration');
+const { SLOT_GRANULARITY_MINUTES } = require('./duration');
+const { calculateServiceTotals } = require('./service-selection');
 const { getTravelMinutes } = require('./tomtom');
 const {
   timeToMinutes,
@@ -85,12 +86,11 @@ function hasTravelBuffer({ candidateStart, candidateEnd, sortedAppointments, tra
   return true;
 }
 
-async function getAvailableSlots({ date, serviceId, petSize, lat, lng }) {
+async function getAvailableSlots({ date, services, petSize, lat, lng }) {
   const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
 
-  const [hoursRes, serviceRes, settingsRes, blocksRes, apptsRes] = await Promise.all([
+  const [hoursRes, settingsRes, blocksRes, apptsRes] = await Promise.all([
     pool.query('SELECT * FROM business_hours WHERE day_of_week = $1', [dayOfWeek]),
-    pool.query('SELECT * FROM services WHERE id = $1 AND active = true', [serviceId]),
     pool.query("SELECT value FROM settings WHERE key = 'max_concurrent_pets'"),
     pool.query('SELECT start_time, end_time FROM availability_blocks WHERE block_date = $1', [date]),
     pool.query(
@@ -100,14 +100,15 @@ async function getAvailableSlots({ date, serviceId, petSize, lat, lng }) {
   ]);
 
   const hours = hoursRes.rows[0];
-  const service = serviceRes.rows[0];
-  if (!hours || hours.is_closed || !service) return { slots: [], durationMinutes: 0 };
+  if (!hours || hours.is_closed || !services?.length) {
+    return { slots: [], durationMinutes: 0 };
+  }
 
   const { wholeDay: wholeDayBlocked, ranges: blockedRanges } = splitBlocks(blocksRes.rows);
   if (wholeDayBlocked) return { slots: [], durationMinutes: 0 };
 
   const maxConcurrent = parseInt(settingsRes.rows[0]?.value ?? '1', 10);
-  const durationMinutes = calculateDurationMinutes(service.base_duration_minutes, petSize, service.name);
+  const { durationMinutes } = calculateServiceTotals(services, petSize);
 
   const openMin = timeToMinutes(hours.open_time);
   const closeMin = timeToMinutes(hours.close_time);

@@ -57,6 +57,15 @@ test('el esquema y la migración soportan el tiempo de recogida y sus recargos',
   }
 });
 
+test('la migración de servicios múltiples conserva y relaciona los servicios de citas existentes', () => {
+  const schema = read('schema.sql');
+  const migration = read('migrations', '006_appointment_services.sql');
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS appointment_services/);
+  assert.match(migration, /INSERT INTO appointment_services/);
+  assert.match(migration, /a\.service_id/);
+  assert.match(migration, /ON CONFLICT \(appointment_id, service_id\) DO NOTHING/);
+});
+
 test('PROTECCIÓN: el runner ejecuta toda migración nueva sobre producción, así que ninguna puede ser destructiva', () => {
   const dir = path.join(dbDir, 'migrations');
   for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.sql'))) {

@@ -9,4 +9,12 @@ function parseId(value) {
   return Number.isSafeInteger(id) && id > 0 && id <= MAX_INT4 ? id : null;
 }
 
-module.exports = { parseId, MAX_INT4 };
+function parseIdList(values) {
+  if (!Array.isArray(values) || values.length === 0) return null;
+
+  const ids = values.map(parseId);
+  if (ids.some((id) => id === null) || new Set(ids).size !== ids.length) return null;
+  return ids;
+}
+
+module.exports = { parseId, parseIdList, MAX_INT4 };
